@@ -50,9 +50,10 @@ def measurements(para, eq):
         m1=mm.Measurement(para, eq)
         print m1            
         
-        m1.do_measure()   
+        m1.do_measure_pm()   
         data=data+m1.results
-    results=pd.DataFrame(data)        
+    results=pd.DataFrame(data)  
+    m1.shutdown()             
     return results
    
 def plot(para, file_name):    
@@ -99,36 +100,28 @@ def main(name='name', P_rated=280, mode='LL', Tb='On', Mnt='On'):
     para['data_path']= ff.create_path_dir(name=para['folder_name'], path = dirname(dirname(__file__))+'/data') 
     para['source_path']=dirname(dirname(__file__))+'/source_files'       
     para['results'] = pd.DataFrame([])  
-
-    file_name='summary_%s_%.0fW' %(para['ac_mode'], para['p_rated'])        
-    
+    file_name='summary_%s_%.0fW' %(para['ac_mode'], para['p_rated'])    
     eq=initialize()
-    ac.set_ac_source(eq, mode=mode, freq=60.0)
     
-    if exe['table']=='On':
-        table_gen1=tg.table_gen(para, eq)
-        table_gen1.generate(SAS_volt=30, show='On', max_power=290)
-        
-    if exe['measurement']=='On':
-        para['Load_pts'] =  [0.5,0.75, 1.0]           #para['p_rated'], para['Load_pts'] = P_rated, [0.5+i*0.05 for i in range(11)]
-        para['SAS_volt_min'], para['SAS_volt_max'], para['SAS_volt_step']= 27,46,3
-        #para['Load_pts']=[round(i*0.01, 2) for i in range(50,100+1,10)]    # choose load condition as reference 1 at full-load, para['p_rated']  
+    para['Load_pts'] =  [0.5,0.75, 1.0]           #para['p_rated'], para['Load_pts'] = P_rated, [0.5+i*0.05 for i in range(11)]
+    para['SAS_volt_min'], para['SAS_volt_max'], para['SAS_volt_step']= 28,45,4
+    #para['Load_pts']=[round(i*0.01, 2) for i in range(50,100+1,10)]    # choose load condition as reference 1 at full-load, para['p_rated']  
 
-        results=measurements(para, eq)
-        results=results.set_index([range(len(results))])
-        results.to_csv(para['data_path']+'/'+file_name+'.csv')
-        
+    results=measurements(para, eq)
+    results=results.set_index([range(len(results))])
+    results.to_csv(para['data_path']+'/'+file_name+'.csv')    
     eq['SERIAL'].close()
+         
   
-    try:
-            plot(para, file_name)
-            save_log(exe, para, log)    
+    try:    
+        plot(para, file_name)
+        save_log(exe, para, log)    
     except:pass     
     return eq, para
            
 if __name__ == '__main__':
     for i in range(2):
-        eq, para=main(name='12160500032_110u_17544_%s' %i, P_rated=280, mode='LL', Tb='Off', Mnt='On')
+        eq, para=main(name='121610019482_82u_eff_%s' %i, P_rated=280, mode='LL')
     
         
   
