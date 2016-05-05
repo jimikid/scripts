@@ -5,6 +5,7 @@ Created on 03/18/2016, @author: sbaek
 
   V01 : 05/05/2016
      - AnsysElectronicsDesktop
+     - 'para' and 'init' are located ouside main()
  
 """
 
@@ -15,11 +16,11 @@ from collections import OrderedDict
 import time
 para, init = OrderedDict(), OrderedDict()
 
-def initiation(init, Open='Off'):
+def initiation():
     oAnsoftApp = win32com.client.Dispatch("Ansoft.ElectronicsDesktop")
     oDesktop = oAnsoftApp.GetAppDesktop()    
     print 'ProjectName : %s, DesignName : %s' %(init['ProjectName'], init['DesignName'])
-    if Open =='On':
+    if init['Open'] =='On':
         oDesktop.RestoreWindow()
         print init['save_name']+'.aedt'
         oDesktop.OpenProject(init['save_name']+'.aedt')
@@ -71,10 +72,6 @@ def Rac(oDesign):
     oModule.CalcOp("-")
     oModule.CopyNamedExprToStack("C2_loss")
     oModule.CalcOp("-")
-    oModule.CopyNamedExprToStack("C3_loss")
-    oModule.CalcOp("-")
-    oModule.CopyNamedExprToStack("C4_loss")
-    oModule.CalcOp("-")
     oModule.CopyNamedExprToStack("Q1_loss")
     oModule.CalcOp("-")
     oModule.CopyNamedExprToStack("Q2_loss")
@@ -94,10 +91,6 @@ def Rac(oDesign):
     oModule.CopyNamedExprToStack("box_5_loss")
     oModule.CalcOp("-")
     oModule.CopyNamedExprToStack("box_6_loss")
-    oModule.CalcOp("-")
-    oModule.CopyNamedExprToStack("box_7_loss")
-    oModule.CalcOp("-")
-    oModule.CopyNamedExprToStack("box_8_loss")
     oModule.CalcOp("-")
     oModule.CopyNamedExprToStack("con_loss")
     oModule.CalcOp("-")    
@@ -155,13 +148,11 @@ def report(oDesign, item, name="XY Plot 1"):
     	])
 
 
-def main(ProjectName, DesignName, Open='Off'):
-    init['ProjectName'], init['DesignName']=ProjectName, DesignName    
-    init['save_path']='C:/Users/sbaek/WorkSpace/2016_Hornet_FEA/FEM_Results/620-00504r03/'        
+def main():      
     init['save_name']=init['save_path']+init['ProjectName']
     
     ''' Initiation, solution type'''
-    oProject, oDesign=initiation(init, Open=Open)
+    oProject, oDesign=initiation()
     
     oEditor = oDesign.SetActiveEditor("3D Modeler")
     ObList= oEditor.GetObjectsByMaterial('copper')
@@ -184,50 +175,55 @@ def main(ProjectName, DesignName, Open='Off'):
     try:
         oModule.CalcStack("clear")
         oModule.ClearAllNamedExpr()
-        print 'clear expressions in a field calculator'
+        print ' Clear expressions in a field calculator'
     except:pass
 
     loss_list, unit_loss_list=[], []
     for i in init['Object']:       
         name=loss(oDesign, i)
         loss_list.append(name)
-        print '\n Set ohmic loss of %s'%(name)        
+        print '\n Set ohmic loss of %s'%(name)     
+        
         #name=volume(oDesign, i)
         #print '\n Set volume of %s'%(name)
         
         #name=unit_loss(oDesign, i)
         #unit_loss_list.append(name)
         #print '\n Set unit_loss of %s'%(name)
+        
     Rac(oDesign)
 
     ''' plot'''
     oModule = oDesign.GetModule("ReportSetup")
     try:
         oModule.DeleteAllReports()
-        print 'delete plots'
+        print ' Delete plots'
     except:pass
 
     report(oDesign, ['Rac'], name='Rac')    #put a list of feild parameters in string format
-    #report(oDesign, loss_list, name='Loss')
+    report(oDesign, loss_list, name='Loss')
     #report(oDesign, unit_loss_list, name='Unit_Loss')
 
-
     ''' save'''
-    oDesign.ExportProfile("Setup1", " ", init['save_name']+".prof")
+    oDesign.ExportProfile("Setup1", " ", init['save_name']+"_"+init['DesignName']+".prof")
     oProject.Save()
     date=time.strftime("%d/%m/%Y %I:%M")
-    print '\n Close at %s ' %date
-    oProject.close()
+        
+    if init['Close']=='On': 
+        print '\n Close at %s ' %date
+        oProject.close()
     
 
 if __name__ == '__main__':
-    global para, init
+
+    init['ProjectName'], init['DesignName']="620-00504r03_0504", "pcb_v02_Q14"   
+    init['Open'], init['Close']='On', 'On'
+    init['save_path']='C:/Users/sbaek/WorkSpace/2016_Hornet_FEA/FEM_Results/620-00504r03/'  
+    
     date=time.strftime("%d/%m/%Y %I:%M")
     print '\n Start at %s ' %date
-    
-    ProjectName, DesignName = "620-00504r03_0504", "pcb_v01_Q14"
-    main(ProjectName, DesignName, Open='On')
-
+        
+    main()
 
 
 
