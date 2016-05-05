@@ -72,6 +72,10 @@ def Rac(oDesign):
     oModule.CalcOp("-")
     oModule.CopyNamedExprToStack("C2_loss")
     oModule.CalcOp("-")
+    oModule.CopyNamedExprToStack("C3_loss")
+    oModule.CalcOp("-")
+    oModule.CopyNamedExprToStack("C4_loss")
+    oModule.CalcOp("-")
     oModule.CopyNamedExprToStack("Q1_loss")
     oModule.CalcOp("-")
     oModule.CopyNamedExprToStack("Q2_loss")
@@ -91,6 +95,10 @@ def Rac(oDesign):
     oModule.CopyNamedExprToStack("box_5_loss")
     oModule.CalcOp("-")
     oModule.CopyNamedExprToStack("box_6_loss")
+    oModule.CalcOp("-")
+    oModule.CopyNamedExprToStack("box_7_loss")
+    oModule.CalcOp("-")
+    oModule.CopyNamedExprToStack("box_8_loss")
     oModule.CalcOp("-")
     oModule.CopyNamedExprToStack("con_loss")
     oModule.CalcOp("-")    
@@ -216,7 +224,7 @@ def main():
 
 if __name__ == '__main__':
 
-    init['ProjectName'], init['DesignName']="620-00504r03_0504", "pcb_v02_Q14"   
+    init['ProjectName'], init['DesignName']="620-00504r03_0504", "pcb_v01_Q14"   
     init['Open'], init['Close']='On', 'On'
     init['save_path']='C:/Users/sbaek/WorkSpace/2016_Hornet_FEA/FEM_Results/620-00504r03/'  
     
