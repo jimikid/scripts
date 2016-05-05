@@ -2,24 +2,27 @@
 Created on 03/18/2016, @author: sbaek
   V00
     - initial release
+
+  V01 : 05/05/2016
+     - AnsysElectronicsDesktop
+ 
 """
 
-import win32com.client 
-oAnsoftApp = win32com.client.Dispatch("AnsoftMaxwell.MaxwellScriptInterface")
-oDesktop = oAnsoftApp.GetAppDesktop()
-    
+import win32com.client     
 import sys
 from os.path import abspath, dirname, exists
 from collections import OrderedDict 
 import time
-date=time.strftime("%m%d") 
+para, init = OrderedDict(), OrderedDict()
 
-def initiation(init, open='Off'):
+def initiation(init, Open='Off'):
+    oAnsoftApp = win32com.client.Dispatch("Ansoft.ElectronicsDesktop")
+    oDesktop = oAnsoftApp.GetAppDesktop()    
     print 'ProjectName : %s, DesignName : %s' %(init['ProjectName'], init['DesignName'])
-    if open =='On':
+    if Open =='On':
         oDesktop.RestoreWindow()
-        print init['save_name']+'.mxwl'
-        oDesktop.OpenProject(init['save_name']+'.mxwl')
+        print init['save_name']+'.aedt'
+        oDesktop.OpenProject(init['save_name']+'.aedt')
         oProject = oDesktop.SetActiveProject(init['ProjectName'])
         oDesign = oProject.SetActiveDesign(init['DesignName'])
     else:
@@ -64,8 +67,41 @@ def unit_loss(oDesign, Object):
 def Rac(oDesign):
     oModule = oDesign.GetModule("FieldsReporter")
     oModule.CopyNamedExprToStack("AllObjects_Loss")
-    oModule.CopyNamedExprToStack("winding_s_loss")
+    oModule.CopyNamedExprToStack("C1_loss")
     oModule.CalcOp("-")
+    oModule.CopyNamedExprToStack("C2_loss")
+    oModule.CalcOp("-")
+    oModule.CopyNamedExprToStack("C3_loss")
+    oModule.CalcOp("-")
+    oModule.CopyNamedExprToStack("C4_loss")
+    oModule.CalcOp("-")
+    oModule.CopyNamedExprToStack("Q1_loss")
+    oModule.CalcOp("-")
+    oModule.CopyNamedExprToStack("Q2_loss")
+    oModule.CalcOp("-")
+    oModule.CopyNamedExprToStack("Q3_loss")
+    oModule.CalcOp("-")    
+    oModule.CopyNamedExprToStack("Q4_loss")
+    oModule.CalcOp("-")
+    oModule.CopyNamedExprToStack("box_1_loss")
+    oModule.CalcOp("-")
+    oModule.CopyNamedExprToStack("box_2_loss")
+    oModule.CalcOp("-")
+    oModule.CopyNamedExprToStack("box_3_loss")
+    oModule.CalcOp("-")
+    oModule.CopyNamedExprToStack("box_4_loss")
+    oModule.CalcOp("-")
+    oModule.CopyNamedExprToStack("box_5_loss")
+    oModule.CalcOp("-")
+    oModule.CopyNamedExprToStack("box_6_loss")
+    oModule.CalcOp("-")
+    oModule.CopyNamedExprToStack("box_7_loss")
+    oModule.CalcOp("-")
+    oModule.CopyNamedExprToStack("box_8_loss")
+    oModule.CalcOp("-")
+    oModule.CopyNamedExprToStack("con_loss")
+    oModule.CalcOp("-")    
+    
     oModule.AddNamedExpression("Rac", "Fields")
 
     
@@ -119,19 +155,27 @@ def report(oDesign, item, name="XY Plot 1"):
     	])
 
 
+def main(ProjectName, DesignName, Open='Off'):
+    init['ProjectName'], init['DesignName']=ProjectName, DesignName    
+    init['save_path']='C:/Users/sbaek/WorkSpace/2016_Hornet_FEA/FEM_Results/620-00504r03/'        
+    init['save_name']=init['save_path']+init['ProjectName']
     
-def main(ProjectName, DesignName):
-    init['ProjectName'], init['DesignName']=ProjectName, DesignName
-    init['Object']=["AllObjects",
-                    'winding_s'
-                    ]
-    init['save_path']=''
-    init['save_path']='C:/Users/sbaek/WorkSpace/2016_Hornet/FEM_Results'
-    init['save_name']=init['save_path']+'/'+init['ProjectName']
-
     ''' Initiation, solution type'''
-    oProject, oDesign=initiation(init,open='On')
-
+    oProject, oDesign=initiation(init, Open=Open)
+    
+    oEditor = oDesign.SetActiveEditor("3D Modeler")
+    ObList= oEditor.GetObjectsByMaterial('copper')
+    
+    init['Object']=['AllObjects']
+    for i in ObList:
+        if not ('via' in i):
+            init['Object'].append(i)
+            
+    ObList= oEditor.GetObjectsByMaterial('silicon')  
+    for i in ObList:
+            if not ('via' in i):
+                init['Object'].append(i)
+    
 #    ''' Run simulation '''
 #    oDesign.AnalyzeAll()
 
@@ -147,8 +191,7 @@ def main(ProjectName, DesignName):
     for i in init['Object']:       
         name=loss(oDesign, i)
         loss_list.append(name)
-        print '\n Set ohmic loss of %s'%(name)
-        
+        print '\n Set ohmic loss of %s'%(name)        
         #name=volume(oDesign, i)
         #print '\n Set volume of %s'%(name)
         
@@ -169,20 +212,22 @@ def main(ProjectName, DesignName):
     #report(oDesign, unit_loss_list, name='Unit_Loss')
 
 
-    #''' save'''
-    #oDesign.ExportProfile("Setup1", " ", init['ProjectName']+"_profile.prof")
-    #oProject.Save()
-    #date=time.strftime("%d/%m/%Y %I:%M")
-    #print '\n Close at %s ' %date
-    #oProject.close()
-
+    ''' save'''
+    oDesign.ExportProfile("Setup1", " ", init['save_name']+".prof")
+    oProject.Save()
+    date=time.strftime("%d/%m/%Y %I:%M")
+    print '\n Close at %s ' %date
+    oProject.close()
+    
 
 if __name__ == '__main__':
     global para, init
-    date= time.strftime("%m%d")
-    para, init = OrderedDict(), OrderedDict()
-    ProjectName, DesignName = "test1", "Xfmr"
-    main(ProjectName, DesignName)
+    date=time.strftime("%d/%m/%Y %I:%M")
+    print '\n Start at %s ' %date
+    
+    ProjectName, DesignName = "620-00504r03_0504", "pcb_v01_Q14"
+    main(ProjectName, DesignName, Open='On')
+
 
 
 
