@@ -6,6 +6,14 @@ Created on 03/18/2016, @author: sbaek
   V01 : 05/05/2016
      - AnsysElectronicsDesktop
      - 'para' and 'init' are located ouside main()
+
+  V02 : 05/12/2016
+     - 'oEditor.GetObjectsByMaterial('copper')' to read copper objects
+     - Objects that needs to be ruled out for Rac calculation is named with 'del_' and automatically removed by a script. 
+     - No need to change a script.
+     - form="Data Table" is added on report(), table is now default
+     - Lac(oDesign) : assuming excitation is 1Arms
+
  
 """
 
@@ -19,7 +27,7 @@ para, init = OrderedDict(), OrderedDict()
 def initiation():
     oAnsoftApp = win32com.client.Dispatch("Ansoft.ElectronicsDesktop")
     oDesktop = oAnsoftApp.GetAppDesktop()    
-    print 'ProjectName : %s, DesignName : %s' %(init['ProjectName'], init['DesignName'])
+    print ' ProjectName : %s, DesignName : %s' %(init['ProjectName'], init['DesignName'])
     if init['Open'] =='On':
         oDesktop.RestoreWindow()
         print init['save_name']+'.aedt'
@@ -42,7 +50,6 @@ def loss(oDesign, Object):
     oModule.AddNamedExpression(name, "Fields")
     return name
 
-
 def volume(oDesign, Object):
     '''
     object : list of the names in Maxwell in string format
@@ -64,51 +71,27 @@ def unit_loss(oDesign, Object):
     oModule.CalcOp("/")
     oModule.AddNamedExpression(name, "Fields")  
     return name    
-
-def Rac(oDesign):
+                                                                       
+def Rac(oDesign, list_subt):
     oModule = oDesign.GetModule("FieldsReporter")
     oModule.CopyNamedExprToStack("AllObjects_Loss")
-    oModule.CopyNamedExprToStack("C1_loss")
-    oModule.CalcOp("-")
-    oModule.CopyNamedExprToStack("C2_loss")
-    oModule.CalcOp("-")
-    oModule.CopyNamedExprToStack("C3_loss")
-    oModule.CalcOp("-")
-    oModule.CopyNamedExprToStack("C4_loss")
-    oModule.CalcOp("-")
-    oModule.CopyNamedExprToStack("Q1_loss")
-    oModule.CalcOp("-")
-    oModule.CopyNamedExprToStack("Q2_loss")
-    oModule.CalcOp("-")
-    oModule.CopyNamedExprToStack("Q3_loss")
-    oModule.CalcOp("-")    
-    oModule.CopyNamedExprToStack("Q4_loss")
-    oModule.CalcOp("-")
-    oModule.CopyNamedExprToStack("box_1_loss")
-    oModule.CalcOp("-")
-    oModule.CopyNamedExprToStack("box_2_loss")
-    oModule.CalcOp("-")
-    oModule.CopyNamedExprToStack("box_3_loss")
-    oModule.CalcOp("-")
-    oModule.CopyNamedExprToStack("box_4_loss")
-    oModule.CalcOp("-")
-    oModule.CopyNamedExprToStack("box_5_loss")
-    oModule.CalcOp("-")
-    oModule.CopyNamedExprToStack("box_6_loss")
-    oModule.CalcOp("-")
-    oModule.CopyNamedExprToStack("box_7_loss")
-    oModule.CalcOp("-")
-    oModule.CopyNamedExprToStack("box_8_loss")
-    oModule.CalcOp("-")
-    oModule.CopyNamedExprToStack("con_loss")
-    oModule.CalcOp("-")    
-    
+    print "\n Rac = \n AllObjects_Loss"
+    for i in list_subt:
+        oModule.CopyNamedExprToStack(i+'_loss')
+        oModule.CalcOp("-")
+        print " -%s" %(i+'_loss')       
     oModule.AddNamedExpression("Rac", "Fields")
 
-    
-def report(oDesign, item, name="XY Plot 1"):
+def Lac(oDesign):
+    oModule = oDesign.GetModule("FieldsReporter")
+    oModule.EnterQty("energy")
+    oModule.EnterVol("AllObjects")
+    oModule.CalcOp("Integrate")
+    oModule.AddNamedExpression("Lac", "Fields")
+
+def report(oDesign, item, name="XY Plot 1", form="Data Table"):  #form :"Rectangular Plot", "Data Table"
     oModule = oDesign.GetModule("ReportSetup")
-    oModule.CreateReport(name, "Fields", "Rectangular Plot", "Setup1 : LastAdaptive", 
+    oModule.CreateReport(name, "Fields", form, "Setup1 : LastAdaptive", 
     	[
     		"Domain:="		, "Sweep"
     	], 
@@ -117,80 +100,59 @@ def report(oDesign, item, name="XY Plot 1"):
     		"Phase:="		, ["0deg"],
     	], 
     	[
-    		"X Component:="		, "Freq",	#"Y Component:="		, ["Rac"]
-            "Y Component:="		, item
-    	], [])
-     
-    #log-log scale
-    oModule.ChangeProperty(
-    	[
-    		"NAME:AllTabs",
-    		[
-    			"NAME:Scaling",
-    			[
-    				"NAME:PropServers", 
-    				name+":AxisY1"
-    			],
-    			[
-    				"NAME:ChangedProps",
-    				[
-    					"NAME:Axis Scaling",
-    					"Value:="		, "Log"
-    				]
-    			]
-    		],
-    		[
-    			"NAME:Scaling",
-    			[
-    				"NAME:PropServers", 
-    				name+":AxisX"
-    			],
-    			[
-    				"NAME:ChangedProps",
-    				[
-    					"NAME:Axis Scaling",
-    					"Value:="		, "Log"
-    				]
-    			]
-    		]
-    	])
-
+    		"X Component:="		, "Freq",
+                #"Y Component:="		, ["Rac","Lac"]
+                "Y Component:="		, item
+    	], [])     
+  
 
 def main():      
     init['save_name']=init['save_path']+init['ProjectName']
     
     ''' Initiation, solution type'''
     oProject, oDesign=initiation()
-    
+
+
+    ''' Build lists of objects '''    
     oEditor = oDesign.SetActiveEditor("3D Modeler")
     ObList= oEditor.GetObjectsByMaterial('copper')
     
     init['Object']=['AllObjects']
     for i in ObList:
-        if not ('via' in i):
-            init['Object'].append(i)
-            
-    ObList= oEditor.GetObjectsByMaterial('silicon')  
-    for i in ObList:
-            if not ('via' in i):
-                init['Object'].append(i)
+        #if not ('via' in i):
+            init['Object'].append(i)            
+    init['Object_del']=[]
+    init['Object_plot']=[]
     
-#    ''' Run simulation '''
-#    oDesign.AnalyzeAll()
+    for i in ObList:
+        if ('del_' in i) or ('via_' in i):
+            init['Object_del'].append(i)
 
-    ''' filed reporter'''
-    oModule = oDesign.GetModule("FieldsReporter")
+    init['Object_plot']=[]
+    for i in ObList:
+        if ('del_' not in i) and ('via_' not in i):
+            init['Object_plot'].append(i+'_loss')  # to plot loss of the items, they are named with _loss in calculator
+
+         
+    ''' Delete previous set-up '''    
     try:
+        oModule = oDesign.GetModule("FieldsReporter")
         oModule.CalcStack("clear")
         oModule.ClearAllNamedExpr()
-        print ' Clear expressions in a field calculator'
+        print '\n Delete expressions in a calculator'
+    
+        oModule = oDesign.GetModule("ReportSetup")
+        oModule.DeleteAllReports()
+        print ' Delete plots'
     except:pass
 
+    
+    ''' filed reporter'''
     loss_list, unit_loss_list=[], []
     for i in init['Object']:       
         name=loss(oDesign, i)
         loss_list.append(name)
-        print '\n Set ohmic loss of %s'%(name)     
+        print '\n Set ohmic loss of %s'%(name)    
         
         #name=volume(oDesign, i)
         #print '\n Set volume of %s'%(name)
@@ -198,39 +160,34 @@ def main():
         #name=unit_loss(oDesign, i)
         #unit_loss_list.append(name)
         #print '\n Set unit_loss of %s'%(name)
-        
-    Rac(oDesign)
+          
+    Rac(oDesign, init['Object_del'])
+    Lac(oDesign)
 
     ''' plot'''
-    oModule = oDesign.GetModule("ReportSetup")
-    try:
-        oModule.DeleteAllReports()
-        print ' Delete plots'
-    except:pass
-
-    report(oDesign, ['Rac'], name='Rac')    #put a list of feild parameters in string format
-    report(oDesign, loss_list, name='Loss')
+    report(oDesign, ['Rac', 'Lac'])    #put a list of feild parameters in string format, form :"Rectangular Plot", "Data Table"
+    
+    report(oDesign, init['Object_plot'], form="Rectangular Plot", name='Loss')
     #report(oDesign, unit_loss_list, name='Unit_Loss')
 
     ''' save'''
-    oDesign.ExportProfile("Setup1", " ", init['save_name']+"_"+init['DesignName']+".prof")
-    oProject.Save()
-    date=time.strftime("%d/%m/%Y %I:%M")
-        
+    oProject.SaveAs(init['save_name']+'.aedt', True)
+    #oProject.Save()
     if init['Close']=='On': 
-        print '\n Close at %s ' %date
+        print '\n Close at %s ' %time.strftime("%d/%m/%Y %I:%M")  
         oProject.close()
     
-
-if __name__ == '__main__':
-
-    init['ProjectName'], init['DesignName']="620-00504r03_0504", "pcb_v01_Q14"   
-    init['Open'], init['Close']='On', 'On'
-    init['save_path']='C:/Users/sbaek/WorkSpace/2016_Hornet_FEA/FEM_Results/620-00504r03/'  
     
-    date=time.strftime("%d/%m/%Y %I:%M")
-    print '\n Start at %s ' %date
-        
+    
+if __name__ == '__main__':         
+    names=[["620_00504r03", "pcb_v02_Q14"]
+           ["620_00504r03", "pcb_v01_Q14"]]
+    for name in names:        
+        init['ProjectName'], init['DesignName']=name[0], name[1]
+        init['Open'], init['Close']='Off', 'Off'
+        init['save_path']="C:/Users/sbaek/Documents/Ansoft/"
+        print '\n Start at %s ' %time.strftime("%d/%m/%Y %I:%M")
+        main()            
     main()
 
 
