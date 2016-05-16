@@ -6,9 +6,8 @@ Created on 03/18/2016, @author: sbaek
 
 
 import os
-try:
-    path='C:/Users/sbaek/WorkSpace/Data_Aquisition/scripts/'
+path='C:/Users/sbaek/WorkSpace/scripts/'
+        
+os.system(path+'main_FEA_analysis.py')
+os.system(path+'main_FEA_Rac.py')
 
-    os.system(path+'main_bench_tempc.py')
-    os.system(path+'main_bench_eff.py')
-except:pass

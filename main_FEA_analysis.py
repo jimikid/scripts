@@ -9,25 +9,28 @@ Created on 03/18/2016, @author: sbaek
 from __future__ import division 
 from math import *
 import win32com.client 
-
-def main(it, names):    
-    ProjectName=names[0]
-    DesignName=names[1]
+oAnsoftApp = win32com.client.Dispatch("Ansoft.ElectronicsDesktop")
+oDesktop = oAnsoftApp.GetAppDesktop()
     
-    oAnsoftApp = win32com.client.Dispatch("Ansoft.ElectronicsDesktop")
-    oDesktop = oAnsoftApp.GetAppDesktop()        
+def main(name):    
+    ProjectName=name[0]
+    DesignName=name[1]
+    
+   
     oDesktop.RestoreWindow()  
     oProject = oDesktop.SetActiveProject(ProjectName)
     oDesign = oProject.SetActiveDesign(DesignName)
 
     oDesign.AnalyzeAll()
-
     oProject.Save()
-    oProject.close()
 
    
 if __name__ == '__main__':            
-    names=[["620-00504r03_0504", "pcb_v01_Q14" ]]
-    for it in range(len(names)):
-        main(it, names[it])
+    names=[["620_00504r03_Q14", "pcb_v01_Q14"],
+           ["620_00504r03_Q14", "pcb_v02_Q14"]]
+    for name in names:
+        try:
+            main(name)
+        except:
+            pass
 
