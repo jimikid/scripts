@@ -73,6 +73,7 @@ def unit_loss(oDesign, Object):
     return name    
                                                                        
 def Rac(oDesign, list_subt):
+    print '\n %s ' %time.strftime("%d/%m/%Y %I:%M")
     oModule = oDesign.GetModule("FieldsReporter")
     oModule.CopyNamedExprToStack("AllObjects_Loss")
     print "\n Rac = \n AllObjects_Loss"
@@ -83,6 +84,7 @@ def Rac(oDesign, list_subt):
     oModule.AddNamedExpression("Rac", "Fields")
 
 def Lac(oDesign):
+    print '\n %s ' %time.strftime("%d/%m/%Y %I:%M")
     oModule = oDesign.GetModule("FieldsReporter")
     oModule.EnterQty("energy")
     oModule.EnterVol("AllObjects")
@@ -90,6 +92,7 @@ def Lac(oDesign):
     oModule.AddNamedExpression("Lac", "Fields")
 
 def report(oDesign, item, name="XY Plot 1", form="Data Table"):  #form :"Rectangular Plot", "Data Table"
+    print '\n %s ' %time.strftime("%d/%m/%Y %I:%M")
     oModule = oDesign.GetModule("ReportSetup")
     oModule.CreateReport(name, "Fields", form, "Setup1 : LastAdaptive", 
     	[
@@ -118,21 +121,28 @@ def main():
     ObList= oEditor.GetObjectsByMaterial('copper')
     
     init['Object']=['AllObjects']
+    init['Object_vias']=[]        
+    init['Object_del']=[]
+    init['Object_plot']=[]    
+      
     for i in ObList:
         #if not ('via' in i):
             init['Object'].append(i)            
-    init['Object_del']=[]
-    init['Object_plot']=[]
-    
+            
     for i in ObList:
-        if ('del_' in i) or ('via_' in i):
-            init['Object_del'].append(i)
-
-    init['Object_plot']=[]
-    for i in ObList:
-        if ('del_' not in i) and ('via_' not in i):
+        #if ('del_' in i) or ('via_' in i):
+        if ('del_' in i) :
+            init['Object_del'].append(i)    
+        else:        # plot every item that does not have '_del'
             init['Object_plot'].append(i+'_loss')  # to plot loss of the items, they are named with _loss in calculator
-
+            
+        if ('via' in i) :
+            init['Object_vias'].append(i)    
+    
+    print ' copper items including AllObjects : %.0f '  %len(init['Object'])
+    print ' copper vias : %.0f '  %len(init['Object_vias'])
+    print ' rule out %.0f items from Rac calculation'  %len(init['Object_del'])
+    print ' plot %.0f copper items'  %len(init['Object_plot'])
          
     ''' Delete previous set-up '''    
     try:
@@ -180,8 +190,7 @@ def main():
     
     
 if __name__ == '__main__':         
-    names=[["620_00504r03", "pcb_v02_Q14"]
-           ["620_00504r03", "pcb_v01_Q14"]]
+    names=[["620_00504r03_sp", "pcb_v01_Q14"]]
     for name in names:        
         init['ProjectName'], init['DesignName']=name[0], name[1]
         init['Open'], init['Close']='Off', 'Off'
