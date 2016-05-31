@@ -14,7 +14,9 @@ Created on 03/18/2016, @author: sbaek
      - form="Data Table" is added on report(), table is now default
      - Lac(oDesign) : assuming excitation is 1Arms
 
- 
+  V03 : 05/26/2016
+     - Solid and Sheet are devided.
+     - Current calculation. 
 """
 
 import win32com.client     
@@ -41,37 +43,62 @@ def initiation():
     return oProject, oDesign
 
 
-def loss(oDesign, Object):
+def loss(oDesign, Solid):
     oModule = oDesign.GetModule("FieldsReporter")
-    name=Object+'_loss' 
+    name=Solid+'_loss' 
     oModule.EnterQty("OhmicLoss")
-    oModule.EnterVol(Object)
+    oModule.EnterVol(Solid)
     oModule.CalcOp("Integrate")
     oModule.AddNamedExpression(name, "Fields")
     return name
 
-def volume(oDesign, Object):
+def J_real(oDesign, Sheet):
+    oModule = oDesign.GetModule("FieldsReporter")
+    name=Sheet+'_J_real'     
+    oModule.EnterQty("J")
+    oModule.CalcOp("Real")
+    oModule.EnterSurf(Sheet)
+    oModule.CalcOp("NormalComponent")
+    oModule.CalcOp("Integrate")
+    oModule.AddNamedExpression(name, "Fields")
+    return name
+
+def volume(oDesign, Solid):
     '''
-    object : list of the names in Maxwell in string format
+    Solid : list of the names in Maxwell in string format
     name_list : list of the names in calculator in Maxwell
     '''
     oModule = oDesign.GetModule("FieldsReporter")
-    name=Object+'_vol'
+    name=Solid+'_vol'
     oModule.EnterScalar(1)
-    oModule.EnterVol(Object)
+    oModule.EnterVol(Solid)
     oModule.CalcOp("Integrate")    
     oModule.AddNamedExpression(name, "Fields")    
     return name
           
-def unit_loss(oDesign, Object):
+def unit_loss(oDesign, Solid):
     oModule = oDesign.GetModule("FieldsReporter")
-    name=Object+'_unit_loss'
-    oModule.CopyNamedExprToStack(Object+"_loss")
-    oModule.CopyNamedExprToStack(Object+"_vol")
+    name=Solid+'_unit_loss'
+    oModule.CopyNamedExprToStack(Solid+"_loss")
+    oModule.CopyNamedExprToStack(Solid+"_vol")
     oModule.CalcOp("/")
     oModule.AddNamedExpression(name, "Fields")  
     return name    
-                                                                       
+
+def I_peak(oDesign, list_sheets):
+    print '\n %s ' %time.strftime("%d/%m/%Y %I:%M")
+    oModule = oDesign.GetModule("FieldsReporter")
+    oModule.CopyNamedExprToStack(list_sheets[0])
+    print "\n Ipeak \n %s" %list_sheets[0]
+    for i  in list_sheets:
+        if i is not list_sheets[0]:                
+            oModule.CopyNamedExprToStack(i)
+            oModule.CalcOp("+")
+            print " +%s" %(i)       
+    oModule.AddNamedExpression("I_peak", "Fields")
+
+
+
 def Rac(oDesign, list_subt):
     print '\n %s ' %time.strftime("%d/%m/%Y %I:%M")
     oModule = oDesign.GetModule("FieldsReporter")
@@ -91,6 +118,7 @@ def Lac(oDesign):
     oModule.CalcOp("Integrate")
     oModule.AddNamedExpression("Lac", "Fields")
 
+    
 def report(oDesign, item, name="XY Plot 1", form="Data Table"):  #form :"Rectangular Plot", "Data Table"
     print '\n %s ' %time.strftime("%d/%m/%Y %I:%M")
     oModule = oDesign.GetModule("ReportSetup")
@@ -110,40 +138,47 @@ def report(oDesign, item, name="XY Plot 1", form="Data Table"):  #form :"Rectang
   
 
 def main():      
-    init['save_name']=init['save_path']+init['ProjectName']
-    
+    init['save_name']=init['save_path']+init['ProjectName']    
     ''' Initiation, solution type'''
     oProject, oDesign=initiation()
 
 
     ''' Build lists of objects '''    
     oEditor = oDesign.SetActiveEditor("3D Modeler")
-    ObList= oEditor.GetObjectsByMaterial('copper')
+    SolidList= oEditor.GetObjectsByMaterial('copper')  #SolidList is in list
+    #oEditor.GetObjectsInGroup('solids')
+    SheetList=oEditor.GetObjectsInGroup('sheets')
     
-    init['Object']=['AllObjects']
-    init['Object_vias']=[]        
-    init['Object_del']=[]
-    init['Object_plot']=[]    
-      
-    for i in ObList:
-        #if not ('via' in i):
-            init['Object'].append(i)            
-            
-    for i in ObList:
-        #if ('del_' in i) or ('via_' in i):
-        if ('del_' in i) :
-            init['Object_del'].append(i)    
-        else:        # plot every item that does not have '_del'
-            init['Object_plot'].append(i+'_loss')  # to plot loss of the items, they are named with _loss in calculator
-            
-        if ('via' in i) :
-            init['Object_vias'].append(i)    
+    init['Solid']=['AllObjects']
+    init['Sheet']=[]
+    init['Solid_plot']=[]    
+    init['Sheet_plot']=[]    
     
-    print ' copper items including AllObjects : %.0f '  %len(init['Object'])
-    print ' copper vias : %.0f '  %len(init['Object_vias'])
-    print ' rule out %.0f items from Rac calculation'  %len(init['Object_del'])
-    print ' plot %.0f copper items'  %len(init['Object_plot'])
-         
+    init['Solid_vias']=[]        
+    init['Solid_del']=[]
+     
+    if  SolidList:
+        for i in SolidList:
+            #if not ('via' in i):
+                init['Solid'].append(i)       
+        for i in SolidList:
+            #if ('del_' in i) or ('via_' in i):
+            if ('del' in i) :
+                init['Solid_del'].append(i)                    
+            if ('via' in i) :
+                init['Solid_vias'].append(i)    
+        
+        print ' copper items including AllObjects : %.0f '  %len(init['Solid'])
+        print ' copper vias : %.0f '  %len(init['Solid_vias'])
+        print ' rule out %.0f items from Rac calculation'  %len(init['Solid_del'])        
+    else: pass
+    
+    if SheetList:
+        for i in SheetList:
+            if 'Section1' in i:
+                init['Sheet'].append(i)                         
+
+                
     ''' Delete previous set-up '''    
     try:
         oModule = oDesign.GetModule("FieldsReporter")
@@ -159,26 +194,27 @@ def main():
     
     ''' filed reporter'''
     loss_list, unit_loss_list=[], []
-    for i in init['Object']:       
+    for i in init['Solid']:       
         name=loss(oDesign, i)
-        loss_list.append(name)
-        print '\n Set ohmic loss of %s'%(name)    
-        
-        #name=volume(oDesign, i)
-        #print '\n Set volume of %s'%(name)
-        
-        #name=unit_loss(oDesign, i)
-        #unit_loss_list.append(name)
-        #print '\n Set unit_loss of %s'%(name)
+        if ('All' not in i) and ('del' not in i):
+            init['Solid_plot'].append(name)  
+        print '\n ohmic loss of %s'%(name)        
+
+    for i in init['Sheet']:       
+        name=J_real(oDesign, i)
+        init['Sheet_plot'].append(name)  
+        print '\n J_real of %s'%(name)        
           
-    Rac(oDesign, init['Object_del'])
+    Rac(oDesign, init['Solid_del'])
+    I_peak(oDesign, init['Sheet_plot'])
     Lac(oDesign)
 
     ''' plot'''
-    report(oDesign, ['Rac', 'Lac'])    #put a list of feild parameters in string format, form :"Rectangular Plot", "Data Table"
-    
-    report(oDesign, init['Object_plot'], form="Rectangular Plot", name='Loss')
-    #report(oDesign, unit_loss_list, name='Unit_Loss')
+    report(oDesign, ['Rac', 'Lac', 'I_peak'])    #put a list of feild parameters in string format, form :"Rectangular Plot", "Data Table"    
+    if init['Solid_plot']: 
+        report(oDesign, init['Solid_plot'], form="Rectangular Plot", name='Loss')
+    if init['Sheet_plot']:     
+        report(oDesign, init['Sheet_plot'], form="Rectangular Plot", name='J_real')
 
     ''' save'''
     oProject.SaveAs(init['save_name']+'.aedt', True)
@@ -189,15 +225,14 @@ def main():
     
     
     
-if __name__ == '__main__':         
-    names=[["620_00504r03_sp", "pcb_v01_Q14"]]
+if __name__ == '__main__':        
+    
+    names=[["620_00504r03_Q14_100k", "pcb_v01_Q14"], ["620_00504r03_Q14_100k", "pcb_v02_Q14"]]
+
     for name in names:        
         init['ProjectName'], init['DesignName']=name[0], name[1]
         init['Open'], init['Close']='Off', 'Off'
         init['save_path']="C:/Users/sbaek/Documents/Ansoft/"
         print '\n Start at %s ' %time.strftime("%d/%m/%Y %I:%M")
         main()            
-    main()
-
-
 
