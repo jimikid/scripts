@@ -2,11 +2,12 @@
 @author: sbaek
   V00 06/21/2016
     - initial release
-    - for transient solver only
+    - standalone script for transient solver
     - surfaces have to be set in Ansys with a specific name convention. such as all sheets have 'path'
-    - it finds all sheets in the design by itself.
-    - report is B flux on sheets with time for transient solver
-    - volume and surface calculation for Ansys cal is included.
+    - finds all sheets by itself.
+    - report is B flux on sheets with time
+    - volume and surface calculation for calculator is included.
+    - finds all reports by itself and export .csv files.
 """
 
 import win32com.client     
@@ -31,6 +32,16 @@ def initiation():
         oProject = oDesktop.SetActiveProject(init['ProjectName'])
         oDesign = oProject.SetActiveDesign(init['DesignName'])
     return oProject, oDesign
+
+
+def reset_cal(oDesign):
+    try:
+        oModule = oDesign.GetModule("FieldsReporter")
+        oModule.CalcStack("clear")
+        oModule.ClearAllNamedExpr()
+        print '\n Delete expressions in a calculator'
+    except:
+        pass
 
 
 def B_normal(oDesign, Sheet):
@@ -80,7 +91,12 @@ def surface(oDesign, Sheet):
     oModule.AddNamedExpression(name, "Fields")
     return name
 
-def report(oDesign, item, name="XY Plot 1", form="Rectangular Plot"):  #form :"Rectangular Plot", "Data Table"
+def report_t(oDesign, item, name="XY Plot 1", form="Rectangular Plot"):  #form :"Rectangular Plot", "Data Table"
+    '''
+    - report for transient solver with time
+    :return: None
+    '''
+
     print '\n %s ' %time.strftime("%d/%m/%Y %I:%M")
     oModule = oDesign.GetModule("ReportSetup")
     oModule.CreateReport(name, "Fields", form, "Setup1 : Transient",
@@ -99,45 +115,39 @@ def report(oDesign, item, name="XY Plot 1", form="Rectangular Plot"):  #form :"R
   
 
 def main():      
-    init['save_name']=init['save_path']+init['ProjectName']    
+    init['save_name']=init['save_path']+init['ProjectName']
+
     ''' Initiation, solution type'''
     oProject, oDesign=initiation()
 
-
-    ''' Build lists of objects '''    
+    ''' Build lists of objects '''
     oEditor = oDesign.SetActiveEditor("3D Modeler")
-    SolidList= oEditor.GetObjectsByMaterial('copper')  #SolidList is in list
-    #oEditor.GetObjectsInGroup('solids')
-    SheetList=oEditor.GetObjectsInGroup('sheets')
-    
-    init['Solid']=['AllObjects']
-    init['Sheet']=[]
-    init['Solid_plot']=[]    
-    init['Sheet_plot']=[]    
-    
-    init['Solid_vias']=[]        
-    init['Solid_del']=[]
-     
-    if  SolidList:
+    SolidList = oEditor.GetObjectsByMaterial('copper')  # SolidList is in list
+    # oEditor.GetObjectsInGroup('solids')
+    SheetList = oEditor.GetObjectsInGroup('sheets')
+
+    init['Solid'] = ['AllObjects']
+    init['Sheet'] = []
+    init['Solid_plot'] = []
+    init['Sheet_plot'] = []
+
+    init['Solid_vias'] = []
+    init['Solid_del'] = []
+
+    if SolidList:
         for i in SolidList:
             init['Solid'].append(i)
-    else: pass
-    
+    else:
+        pass
+
     if SheetList:
         for i in SheetList:
             if 'path' in i:
-                init['Sheet'].append(i)                         
+                init['Sheet'].append(i)
 
-                
-    ''' Delete previous set-up '''    
-    try:
-        oModule = oDesign.GetModule("FieldsReporter")
-        oModule.CalcStack("clear")
-        oModule.ClearAllNamedExpr()
-        print '\n Delete expressions in a calculator'
-    except:pass
+    ''' Delete previous set-up '''
+    reset_cal(oDesign)
 
-    
     ''' filed reporter'''
     loss_list, unit_loss_list=[], []
 
@@ -148,7 +158,13 @@ def main():
 
     ''' plot'''
     if init['Sheet_plot']:
-        report(oDesign, init['Sheet_plot'], form="Rectangular Plot", name='Bavg')
+        report_t(oDesign, init['Sheet_plot'], form="Rectangular Plot", name='plot')
+
+    ''' export plot'''
+    oModule = oDesign.GetModule("ReportSetup")  #have all names of reports
+    names= oModule.GetAllREportNames()
+    for i in names:
+        oModule.ExportToFile(i, init['save_path']+init['ProjectName']+'_'+init['DesignName']+'_'+i+".csv")
 
     ''' save'''
     oProject.SaveAs(init['save_name']+'.aedt', True)
@@ -160,7 +176,8 @@ def main():
     
     
 if __name__ == '__main__':
-    names=[["422_00157_flux_Sec_In", "flux_Tran_Sec_In_110"]]
+    names=[["422_00157_flux_Sec_In", "flux_Tran_82"], ["422_00157_flux_Sec_In", "flux_Tran_110"],
+           ["422_00157_flux_Sec_Out", "flux_Tran_82"],["422_00157_flux_Sec_Out", "flux_Tran_110"]]
 
     for name in names:        
         init['ProjectName'], init['DesignName']=name[0], name[1]
