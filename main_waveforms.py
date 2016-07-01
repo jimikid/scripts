@@ -14,19 +14,14 @@
     - convert_1st_key_t() to change a key of the first column to 't'
     - returns w in list
 """
-import sys, time
-from os.path import abspath, dirname
+import sys
+from os.path import dirname
 sys.path.append(dirname(dirname(__file__)))
 sys.path.append('%s/analysis' % (dirname(dirname(__file__))))
 print 'add path %s/analysis' % (dirname(dirname(__file__)))
-from collections import OrderedDict
 
-from math import *
 import pandas as pd
-import matplotlib.pyplot as plt
-import analysis.figure_functions as ff
 import analysis.waveform_func as wf
-#para, init = OrderedDict(), OrderedDict()
 
 def convert_1st_key_t(df):
     '''
@@ -38,8 +33,6 @@ def convert_1st_key_t(df):
     for i in range(1, len(df.keys())):
         print i, df.keys()[i]
         new_keys.append(df.keys()[i])
-    print df.columns
-    print new_keys
     df.columns=new_keys
     return df
 
@@ -50,7 +43,9 @@ def main(filepath, filename):
     :param filename:str()
     :return: []
     '''
-    df = pd.read_csv(filepath + filename + '.csv')
+    file=filepath + filename + '.csv'
+    print ' read file %s' %file
+    df = pd.read_csv(file)
     df=convert_1st_key_t(df)  #change the first key(column) to 't' which is compatible with waveform_func.py
 
     waves=wf.waveforms(filename=filename, filepath=filepath, df=df)
@@ -63,13 +58,13 @@ def main(filepath, filename):
     print ' %.1f kHz' %(freq/1000)
 
     print waves
-    #waves.plot_all()
+    waves.plot_all()
 
     return waves
 
 
 if __name__ == '__main__':
-    filepath = "C:/Users/sbaek/WorkSpace/2016_Hornet_Bench/New folder/"
+    filepath = "C:/Users/sbaek/WorkSpace/2016_Hornet_Bench/0701_T1_saturation/"
 
     # waveforms from Epics
     w=dict()
@@ -90,7 +85,7 @@ if __name__ == '__main__':
     W_pkpk, W_rms, W_avg = dict(), dict(), dict()
 
     for i in names:
-        filename = i+"_Pri_in_Bavg"  # . csv is in wf.
+        filename = "Hornet_00157_"+i+"_Pri_in_B"  # . csv is in wf.
         print ' %s ' %filename
         wave = main(filepath, filename)
         B_pkpk.update({filename: wave.get_pkpk()})
@@ -98,31 +93,31 @@ if __name__ == '__main__':
         B_avg.update({filename: wave.get_avg()})
         w.update({filename: wave})
 
-        filename = i+"_Pri_out_Bavg"  # . csv is in wf.
+        filename = "Hornet_00157_"+i+"_Pri_out_B"  # . csv is in wf.
         wave = main(filepath, filename)
         B_pkpk.update({filename: wave.get_pkpk()})
         B_rms.update({filename: wave.get_rms()})
         B_avg.update({filename: wave.get_avg()})
         w.update({filename: wave})
 
-    df_Bpk = pd.DataFrame(B_pkpk, index=wave.get_labels())
+    df_pk = pd.DataFrame(B_pkpk, index=wave.get_labels())
     df_rms = pd.DataFrame(B_rms, index=wave.get_labels())
-    df_Bavg = pd.DataFrame(B_avg, index=wave.get_labels())
+    df_avg = pd.DataFrame(B_avg, index=wave.get_labels())
 
-    df_pk.to_csv('B_pkpk.csv')
-    df_rms.to_csv('B_rms.csv')
-    df_avg.to_csv('B_avg.csv')
+    df_pk.to_csv(filepath+'B_pkpk.csv')
+    df_rms.to_csv(filepath+'B_rms.csv')
+    df_avg.to_csv(filepath+'B_avg.csv')
 
 
     for i in names:
-        filename = i + "_Pri_in_fluxlinkage"  # . csv is in wf.
+        filename = "Hornet_00157_"+i + "_Pri_in_fluxlinkage"  # . csv is in wf.
         wave = main(filepath, filename)
         F_pkpk.update({filename: wave.get_pkpk()})
         F_rms.update({filename: wave.get_rms()})
         F_avg.update({filename: wave.get_avg()})
         w.update({filename: wave})
 
-        filename = i + "_Pri_out_fluxlinkage"  # . csv is in wf.
+        filename = "Hornet_00157_"+ i + "_Pri_out_fluxlinkage"  # . csv is in wf.
         wave = main(filepath, filename)
         F_pkpk.update({filename: wave.get_pkpk()})
         F_rms.update({filename: wave.get_rms()})
@@ -133,20 +128,20 @@ if __name__ == '__main__':
     df_rms = pd.DataFrame(F_rms, index=wave.get_labels())
     df_avg = pd.DataFrame(F_avg, index=wave.get_labels())
 
-    df_pk.to_csv('F_pkpk.csv')
-    df_rms.to_csv('F_rms.csv')
-    df_avg.to_csv('F_avg.csv')
+    df_pk.to_csv(filepath+'F_pkpk.csv')
+    df_rms.to_csv(filepath+'F_rms.csv')
+    df_avg.to_csv(filepath+'F_avg.csv')
 
 
     for i in names:
-        filename = i + "_Pri_in_winding"  # . csv is in wf.
+        filename = "Hornet_00157_"+ i + "_Pri_in_winding"  # . csv is in wf.
         wave = main(filepath, filename)
         W_pkpk.update({filename: wave.get_pkpk()})
         W_rms.update({filename: wave.get_rms()})
         W_avg.update({filename: wave.get_avg()})
         w.update({filename: wave})
 
-        filename = i + "_Pri_out_winding"  # . csv is in wf.
+        filename = "Hornet_00157_"+i + "_Pri_out_winding"  # . csv is in wf.
         wave = main(filepath, filename)
         W_pkpk.update({filename: wave.get_pkpk()})
         W_rms.update({filename: wave.get_rms()})
@@ -157,8 +152,8 @@ if __name__ == '__main__':
     df_rms = pd.DataFrame(W_rms, index=wave.get_labels())
     df_avg = pd.DataFrame(W_avg, index=wave.get_labels())
 
-    df_pk.to_csv('W_pkpk.csv')
-    df_rms.to_csv('W_rms.csv')
-    df_avg.to_csv('W_avg.csv')
+    df_pk.to_csv(filepath+'W_pkpk.csv')
+    df_rms.to_csv(filepath+'W_rms.csv')
+    df_avg.to_csv(filepath+'W_avg.csv')
 
 
