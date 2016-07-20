@@ -20,113 +20,112 @@ import pandas as pd
 import figure_functions as ff
 import pandas as pd
 
-data= OrderedDict()
-figsize=(8,6)
-xlim=(0.1,10)
-xtick=[i for i in range(100,600,100)]
-xtick=[0.1,1,10]
-xtick_label=[str(i) for i in range(100,600,100)]
-xtick_label=['0.1','1','10']
 
-for i in range(1,7):       
-    filename="C%s_open(1)timestested_" %i
-    print filename
-    print '\n Start at %s ' %time.strftime("%d/%m/%Y %I:%M")    
-    save_path=""    
-    #df=pd.read_csv(folderpath+'/'+filename+'/'+filename+'.csv')                
-    df=pd.read_csv('C:/Users/sbaek/WorkSpace/2016_Hornet_Bench/0715_Payton/T1/'+filename+'/'+filename+'.csv')                
-    data.update({filename:df})
 
-limit=[]
-legend=[]
-data_list=[]
 
-for i in data.keys():
-    print i
-    data_list.append((data[i]['FREQ (HZ)'][:200]/1E3, data[i]['TRACE A'][:200]*1E3))
-    limit.append((xlim,(0, 4)))
-    print i , i.split('_')[0]
-    legend.append(i.split('_')[0])
+def main_L(filename, data, terminal, scale, xlim, ylim, xtick,xtick_label):
+    figsize = (8, 6)
 
-ff.plot(
-    data=data_list,
-    label=[('Freq [kHz]','L [mH]')],
-    limit=limit,
-    title='L open_circuit' ,
-    fig_num=1, hold=True, combine=True, legend=legend, figsize=figsize,
-    xtick=xtick, xtick_label=xtick_label)
+    print '\n Start at %s ' %time.strftime("%d/%m/%Y %I:%M")
+    save_path=""
+    data_list=[]; limit=[]; legend=[]
 
-data_list=[]; limit=[]; legend=[]
 
-for i in data.keys():
-    print i
-    data_list.append((data[i]['FREQ (HZ)'][:200]/1E3, data[i]['TRACE B'][:200]))
-    limit.append((xlim,(0, 1)))
-    print i , i.split('_')[0]
-    legend.append(i.split('_')[0])
+    for i in data.keys():
+        print i
+        data_list.append((data[i]['FREQ (HZ)'][:200]/1E3, data[i]['TRACE A'][:200]*1E3))
+        limit.append((xlim,ylim))
+        print i , i.split('_')[0]
+        legend.append(i.split('_')[0])
 
-ff.plot(
+    ff.plot(
         data=data_list,
-        label=[('Freq [kHz]','R [ohm]')],
+        label=[('Freq [kHz]','L [mH]')],
         limit=limit,
-        title='R open_circuit' ,
-        fig_num=2, hold=True, combine=True, legend=legend, figsize=figsize,
-        xtick=xtick, xtick_label=xtick_label)
+        title='L_%s_circuit' %terminal ,
+        fig_num=1, hold=True, combine=True, legend=legend, figsize=figsize,
+        xtick=xtick, xtick_label=xtick_label, scale=scale)\
 
 
-#############
 
 
-data= OrderedDict()
+def main_R(filename, data, terminal, scale, xlim, ylim, xtick,xtick_label):
+    figsize = (8, 6)
+    print '\n Start at %s ' %time.strftime("%d/%m/%Y %I:%M")
+    save_path=""
+
+    data_list=[]; limit=[]; legend=[]
+
+    for i in data.keys():
+        print i
+        data_list.append((data[i]['FREQ (HZ)'][:200]/1E3, data[i]['TRACE B'][:200]))
+        limit.append((xlim,ylim))
+        print i , i.split('_')[0]
+        legend.append(i.split('_')[0])
+
+    ff.plot(
+            data=data_list,
+            label=[('Freq [kHz]','R [ohm]')],
+            limit=limit,
+            title='R_%s_circuit'%terminal ,
+            fig_num=2, hold=True, combine=True, legend=legend, figsize=figsize,
+            xtick=xtick, xtick_label=xtick_label, scale=scale)
 
 
-for i in range(1,7):       
-    filename="C%s_short(1)timestested_" %i
-    print filename
-    print '\n Start at %s ' %time.strftime("%d/%m/%Y %I:%M")    
-    save_path=""    
-    #df=pd.read_csv(folderpath+'/'+filename+'/'+filename+'.csv')                
-    df=pd.read_csv('C:/Users/sbaek/WorkSpace/2016_Hornet_Bench/0715_Payton/T1/'+filename+'/'+filename+'.csv')                
-    data.update({filename:df})
+def main_G(filename, data, terminal, scale, xlim, ylim, xtick,xtick_label):
+    figsize = (8, 6)
+    print '\n Start at %s ' %time.strftime("%d/%m/%Y %I:%M")
+    save_path=""
 
-data_list=[]
-limit=[]
-legend=[]
-for i in data.keys():
-    print i
-    data_list.append((data[i]['FREQ (HZ)'][:200]/1E3, data[i]['TRACE A'][:200]*1E3))
-    limit.append((xlim,(0, 0.15)))
-    print i , i.split('_')[0]
-    legend.append(i.split('_')[0])
+    data_list=[]; limit=[]; legend=[]
 
+    for i in data.keys():
+        print i
+        data_list.append((data[i]['FREQ (HZ)'][:200]/1E3, data[i]['TRACE B'][:200]))
+        limit.append((xlim,ylim))
+        print i , i.split('_')[0]
+        legend.append(i.split('_')[0])
 
-ff.plot(
-    data=data_list,
-    label=[('Freq [kHz]','L [mH]')],
-    limit=limit,
-    title='L short_circuit' ,
-    fig_num=1, hold=True, combine=True, legend=legend, figsize=figsize,
-    xtick=xtick, xtick_label=xtick_label)
+    ff.plot(
+            data=data_list,
+            label=[('Freq [kHz]','G [S]')],
+            limit=limit,
+            title='G_%s_circuit'%terminal ,
+            fig_num=2, hold=True, combine=True, legend=legend, figsize=figsize,
+            xtick=xtick, xtick_label=xtick_label, scale=scale)
 
 
-data_list=[]
-limit=[]
-legend=[]
 
-for i in data.keys():
-    print i
-    data_list.append((data[i]['FREQ (HZ)'][:200]/1E3, data[i]['TRACE B'][:200]))
-    limit.append((xlim,(0, 0.2)))
-    print i , i.split('_')[0]
-    legend.append(i.split('_')[0])
+if __name__ == '__main__':
+    data = OrderedDict()
+    xlim = (100, 300)
+    #xlim = (1, 3)
+    xtick = [i for i in range(100, 400, 100)]
+    #xtick = [1, 2, 3]
+    xtick_label = [str(i) for i in range(100, 600, 100)]
+    xtick_label = ['1', '2', '3']
+
+    terminal = 'open'
+
+    for i in range(1,7):
+        filename="C%s_%s(1)timestested_" %(i, terminal)
+        df=pd.read_csv('C:/Users/sbaek/WorkSpace/2016_Hornet_Bench/0718_Payton/T1/'+filename+'/'+filename+'.csv')
+        data.update({filename:df})
+    main_L(filename, data, terminal, scale='log', xlim=xlim, ylim = (0, 4),  xtick=xtick, xtick_label=xtick_label)
+    #main_L(filename, data, terminal, scale='loglog', xlim=xlim, ylim = (0, 4),xtick=xtick, xtick_label=xtick_label)
+    main_G(filename, data, terminal, scale='log', xlim=xlim, ylim = (0, 2E-3), xtick=xtick, xtick_label=xtick_label)
+    #main_G(filename, data, terminal, scale='loglog', xlim=xlim, ylim = (0, 1E-5), xtick=xtick, xtick_label=xtick_label)
 
 
-ff.plot(
-    data=data_list,
-    label=[('Freq [kHz]','R [ohm]')],
-    limit=limit,
-    title='R short_circuit' ,
-    fig_num=2, hold=True, combine=True, legend=legend, figsize=figsize,
-    xtick=xtick, xtick_label=xtick_label)
+    data = OrderedDict()
+    terminal = 'short'
 
+    for i in range(1, 7):
+        filename = "C%s_%s(1)timestested_" % (i, terminal)
+        df = pd.read_csv('C:/Users/sbaek/WorkSpace/2016_Hornet_Bench/0718_Payton/T1/' + filename + '/' + filename + '.csv')
 
+        data.update({filename: df})
+    main_L(filename, data, terminal, scale='log', xlim=xlim, ylim = (0, 0.14), xtick=xtick, xtick_label=xtick_label)
+    #main_L(filename, data, terminal, scale='loglog', xlim=xlim, ylim = (0, 0.14), xtick=xtick, xtick_label=xtick_label)
+    main_R(filename, data, terminal, scale='log', xlim=xlim, ylim = (0.15, 0.45),xtick=xtick, xtick_label=xtick_label)
+    #main_R(filename, data, terminal, scale='loglog', xlim=xlim,  ylim = (0, 0.5),xtick=xtick, xtick_label=xtick_label)
