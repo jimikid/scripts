@@ -1,4 +1,3 @@
-
 """
 Created on 08/03/2015
     - initial release
@@ -14,142 +13,163 @@ Created on 08/03/2015
      - link to analysis folder
      - namesof valuables in a summary file changed.  -> volt_in, eff
 
+    V04 : 08/05/2016
+     - overall change.
+     - main_plot_sat_limit.py and map plots are combined with eff_func.py.
 """
 
 import sys, time
 from os.path import abspath, dirname
+print dirname(dirname(__file__))
 sys.path.append(dirname(dirname(__file__)))
-sys.path.append('%s/analysis' % (dirname(dirname(__file__))))
-
 from collections import OrderedDict
-
 from math import *
-import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
-import analysis.figure_functions as ff
-import pandas as pd
+import analysis.eff_func as ef
 
-data=OrderedDict()
-data_w=OrderedDict()
-para=OrderedDict()
+data_w = OrderedDict()
+para = OrderedDict()
+
 
 def data_eff(data1, name):
-    Load1, Load2, Load3= data1.keys()[0], data1.keys()[1], data1.keys()[2]
+    Load1, Load2, Load3 = data1.keys()[0], data1.keys()[1], data1.keys()[2]
     df1, df2, df3 = data1.values()[0], data1.values()[1], data1.values()[2]
-    eff=[]
+    eff = []
     for i in range(len(df1)):
-        a=(0.21*df1['eff'][i]+0.53*df2['eff'][i]+0.05*df3['eff'][i])/(0.21+0.53+0.05)
-        #b=(0.48*df1['eff'][i]+0*df2['eff'][i]+0.2*df3['eff'][i])/(0.48+0+0.2)
+        a = (0.21 * df1['eff'][i] + 0.53 * df2['eff'][i] + 0.05 * df3['eff'][i]) / (0.21 + 0.53 + 0.05)
+        # b=(0.48*df1['eff'][i]+0*df2['eff'][i]+0.2*df3['eff'][i])/(0.48+0+0.2)
         eff.append(a)
     return df1.volt_in, eff
 
 def save_fig(filename):
-    print 'save : %s\n' %filename
+    print 'save : %s\n' % filename
     plt.savefig(filename)
     plt.close()
 
-def plot_eff(data1, name):
-    Load1, Load2, Load3= data1.keys()[0], data1.keys()[1], data1.keys()[2]
-    df1, df2, df3 = data1.values()[0], data1.values()[1], data1.values()[2]
-    fig = plt.figure(1)
-    ax1 = fig.add_subplot(111)
-    markersize=6
-    l1=ax1.plot(df1.volt_in, df1['eff'], '-bx', markersize=markersize, label='Unit Eff. load %s%%' %Load1)
-    l2=ax1.plot(df2.volt_in, df2['eff'], '-gx', markersize=markersize, label='Unit Eff. load %s%%' %Load2)
-    l3=ax1.plot(df3.volt_in, df3['eff'], '-rx', markersize=markersize, label='Unit Eff. load %s%%' %Load3)
 
-    lns = l1+l2+l3
-    labs = [l.get_label() for l in lns]
-
-    ax1.set_xlim(26, 46)
-    ax1.set_ylim(94.5, 97.5)
-    ax1.set_xlabel('Vdc[V]')
-    ax1.set_ylabel('Eff.[%]')
-    ax1.legend(lns, labs, loc='upper left')
-    ax1.grid()
-
-    plt.title('P_rated= %sW, %s, %s' %(para['p_rated'], para['mode'], name))
-    filename=para['data_path']+'fig_%s_%.0fW_%s.png' %(para['mode'], para['p_rated'], name)
-    save_fig(filename)
-
-
-def weight_eff(data1, name):
-    ''' check load conditions and pu weight into account '''
+def weight_eff(data1):
+    ''' check load conditions and put weight into account '''
     for i in range(len(data1)):
-        if (int(data1.keys()[i])>98 and int(data1.keys()[i])<102):
-            weight1=0.05
-            print 'Load :100, weight :%s' %weight1
-            L100= data1.values()[i]['eff']*weight1
+        if (int(data1.keys()[i]) > 98 and int(data1.keys()[i]) < 102):
+            weight1 = 0.05
+            print 'Load :100, weight :%s' % weight1
+            L100 = data1.values()[i]['eff'] * weight1
 
-        if (int(data1.keys()[i])>73 and int(data1.keys()[i])<77):
-            weight2=0.53
-            print 'Load :75, weight :%s' %weight2
-            L75= data1.values()[i]['eff']*weight2
+        if (int(data1.keys()[i]) > 73 and int(data1.keys()[i]) < 77):
+            weight2 = 0.53
+            print 'Load :75, weight :%s' % weight2
+            L75 = data1.values()[i]['eff'] * weight2
 
-        if (int(data1.keys()[i])>48 and int(data1.keys()[i])<52):
-            weight3=0.21
-            print 'Load :50, weight :%s \n' %weight3
-            L50= data1.values()[i]['eff']*weight3
-    eff=(L100+L75+L50)/(weight1+weight2+weight3)
+        if (int(data1.keys()[i]) > 48 and int(data1.keys()[i]) < 52):
+            weight3 = 0.21
+            print 'Load :50, weight :%s \n' % weight3
+            L50 = data1.values()[i]['eff'] * weight3
+    eff = (L100 + L75 + L50) / (weight1 + weight2 + weight3)
     return (data1.values()[0]['volt_in'], eff)
 
 
-
 def main():
-    para['data_path']=dirname(dirname(__file__))+'/data/'
-    #para['source_path']=dirname(dirname(__file__))+'/source_files/'
+    ''' eff plots '''
+    results, names = OrderedDict(), []
+    figsize = (5, 7)
+    for i in range(3, 6):
+        for j in range(1, 5):
+            names.append('C%s_%s' % (i, j))
 
-    para['p_rated']=280 # the amount of the power transfer from DC to AC
-    para['data_file_name']='data'
-    para['mode']='LL'
-    #index=[0,1,2]
+    for name in names:
+        para['p_rated'], para['ac_mode'] = 290, 'LL'
+        foldername = "%s_LL_%sW" % (name, para['p_rated'])
+        file_name='summary_%s_%.0fW' % (para['ac_mode'], para['p_rated'])
+        para['data_path'] = 'C:/Users/sbaek/WorkSpace/2016_Hornet_Bench/0803_Horent_Sat/%s/%s/' % (name.split('_')[0], foldername)
+        para['name'] = name
 
-    name='14044'
-    df=pd.read_csv('../data/summary_%s_%.0fW_%s.csv' %(para['mode'], para['p_rated'], name))
-    data.update({name:ff.sort_index(df)})
-    plot_eff(data[name], name)
-    data_w.update({name:weight_eff(data[name], name)})
-
-
-    name='15044'
-    df=pd.read_csv('../data/summary_%s_%.0fW_%s.csv' %(para['mode'], para['p_rated'], name))
-    data.update({name:ff.sort_index(df)})
-    plot_eff(data[name], name)
-    data_w.update({name:weight_eff(data[name], name)})
+        ef1=ef.eff(file_name=file_name, para=para)
+        ef1.plot_eff(limit=[(26, 46), (95.5, 97.5)], marker='o', figsize=figsize)
+        results.update({name: ef1.sort_index()})
 
 
-    name='17544'
-    df=pd.read_csv('../data/summary_%s_%.0fW_%s.csv' %(para['mode'], para['p_rated'], name))
-    data.update({name:ff.sort_index(df)})
-    plot_eff(data[name], name)
-    data_w.update({name:weight_eff(data[name], name)})
+    ''' weighted eff '''
+    # for 50%, 75% and 100% measurements only!
+    for i in range(3, 6):
+        for j in range(1, 5):
+            names.append('C%s_%s' % (i, j))
+
+    plts = [] #put ;lots in this list
+    for name in names:
+        para['p_rated'], para['ac_mode'] = 290, 'LL'
+        foldername = "%s_LL_%sW" % (name, para['p_rated'])
+        file_name='summary_%s_%.0fW' % (para['ac_mode'], para['p_rated'])
+        para['data_path'] = 'C:/Users/sbaek/WorkSpace/2016_Hornet_Bench/0803_Horent_Sat/%s/%s/' % (name.split('_')[0], foldername)
+        #para['name'] = name
+
+        results[name]
+        volt_in, eff = weight_eff(results[name])
+        fig = plt.figure(1)
+        ax1 = fig.add_subplot(111)
+        markersize=6
+        plts.append(ax1.plot(volt_in, eff, '-x', markersize=markersize, label='Eff. %s' %name))
+        #ax1.set_xlim(26, 46)
+        #ax1.set_ylim(95.6, 97.0)
+        #ax1.set_xlabel('Vdc[V]')
+        #ax1.set_ylabel('Eff.[%]')
+        #ax1.grid()
+        #plt.title('Weighted Eff., Po=%s, %s' %(para['p_rated'], para['ac_mode']))
+        filename=para['data_path']+'fig_weighted_eff_%s_%s.png' %(para['ac_mode'], para['p_rated'])
+        #save_fig(filename) # if save here cannot produce a combined plot
 
 
-    name='22044'
-    df=pd.read_csv('../data/summary_%s_%.0fW_%s.csv' %(para['mode'], para['p_rated'], name))
-    data.update({name:ff.sort_index(df)})
-    plot_eff(data[name], name)
-    data_w.update({name:weight_eff(data[name], name)})
+    ax1.set_xlim(26, 46)
+    ax1.set_ylim(95.6, 97.0)
+    ax1.set_xlabel('Vdc[V]')
+    ax1.set_ylabel('Eff.[%]')
+    #combine all weighted eff plots.
+    lns=[]
+    for i in range(len(plts)):
+        lns=lns+plts[i]
+
+    print lns
+
+    labs = [l.get_label() for l in lns]
+    ax1.legend(lns, labs, loc='upper left')
+    ax1.grid()
+    plt.title('Weighted Eff., Po=%s, %s' %(para['p_rated'], para['ac_mode']))
+    filename='fig_weighted_eff_%s_%s.png' %(para['ac_mode'], para['p_rated'])
+    save_fig(filename)
 
 
+    ''' map and 3d plots '''
+    names = []
+    for i in range(1, 6):
+        for j in range(1, 3):
+            names.append('C%s_%s' % (i, j))
+    for name in names:
+        para['p_rated'], para['ac_mode'] = 300, 'LL'
+        foldername = "%s_LL_%sW" % (name, para['p_rated'])
+        file_name='summary_%s_%.0fW' % (para['ac_mode'], para['p_rated'])
+        para['data_path'] = 'C:/Users/sbaek/WorkSpace/2016_Hornet_Bench/0803_Horent_Sat/%s/%s/' % (name.split('_')[0], foldername)
+        #para['name'] = name
 
-    ''' plot based on load conditions'''
-    for n in range(len(data[name].values())):   #len(data[name].values()) : # of sorted load condtions
+        ef2=ef.eff(file_name=file_name, para=para)
+        ef2.plot_eff(limit=[(26, 46), (95.5, 97.5)], marker='o', figsize=figsize)
+        ef2.plot_3d(zlim=(95.5, 97.5))
+        ef2.plot_map()
+
+
+    ''' plot based on load conditions '''
+    for n in range(len(results[name].values())):   #len(data[name].values()) : # of sorted load condtions
         fig = plt.figure(n+1)
         ax1 = fig.add_subplot(111)
         markersize=6
         plts=[]
-        for key1 in data:
+        for key1 in results:
             '''data is in dict()
                key1 is the name ' ',
                data[key1].keys() : 'load condition in str' in list []
                data[key1].values() : 'measured values in dataframe' in list[]
                n indicates load condition
             '''
-            plts.append(ax1.plot(data[key1].values()[n]['volt_in'], data[key1].values()[n]['eff'], '-x',
+            plts.append(ax1.plot(results[key1].values()[n]['volt_in'], results[key1].values()[n]['eff'], '-x',
                                  markersize=markersize, label='Unit Eff. '+key1))
-
         ax1.set_xlim(26, 46)
         ax1.set_ylim(94.5, 97.5)
         ax1.set_xlabel('Vdc[V]')
@@ -162,50 +182,26 @@ def main():
         labs = [l.get_label() for l in lns]
         ax1.legend(lns, labs, loc='upper left')
         ax1.grid()
-        plt.title('Load= %s%%, %s' %(data.values()[n].keys()[n], para['mode']))
-        filename=para['data_path']+'fig_%s_%s.png' %(para['mode'], data.values()[n].keys()[n])
+        plt.title('Load= %s%%, %s' %(results.values()[n].keys()[n], para['ac_mode']))
+        #filename=para['data_path']+'fig_%s_%s.png' %(para['mode'], results.values()[n].keys()[n])
+        filename = 'fig_%s_%s.png' % (para['ac_mode'], results.values()[n].keys()[n])
         save_fig(filename)
 
+    figsize = (5, 7)
+    for p_rated in [270, 280, 290, 300]:
+        para['p_rated'] = p_rated  # the amount of the power transfer from DC to AC
+        para['ac_mode'] = 'LL'
+        foldername = "C4_eff_1_LL_%sW" % (para['p_rated'])
+        file_name = 'summary_%s_%.0fW' % (para['ac_mode'], para['p_rated'])
+        para['data_path'] = 'C:/Users/sbaek/WorkSpace/2016_Hornet_Bench/0803_Horent_Sat/C4_eff/%s/' %foldername
 
-    ''' weighted eff '''
-    fig = plt.figure(1)
-    ax1 = fig.add_subplot(111)
-    markersize=6
-    plts=[]
-    for key1 in data_w:
-        if '140' in key1:
-            plts.append(ax1.plot(data_w[key1][0], data_w[key1][1], '-x',
-                             markersize=markersize, label='Unit Eff. '+key1))
-        if '150' in key1:
-            plts.append(ax1.plot(data_w[key1][0], data_w[key1][1], '-x',
-                             markersize=markersize, label='Unit Eff. '+key1))
-        if '175' in key1:
-            plts.append(ax1.plot(data_w[key1][0], data_w[key1][1], '-x',
-                             markersize=markersize, label='Unit Eff. '+key1))
-        if '220' in key1:
-            plts.append(ax1.plot(data_w[key1][0], data_w[key1][1], '-x',
-                             markersize=markersize, label='Unit Eff. '+key1))
+        ef3=ef.eff(file_name=file_name, para=para)
+        ef3.plot_eff(limit=[(26, 46), (95.5, 97.5)], marker='o', figsize=figsize)
 
-    ax1.set_xlim(26, 46)
-    ax1.set_ylim(95.6, 97.0)
-    ax1.set_xlabel('Vdc[V]')
-    ax1.set_ylabel('Eff.[%]')
 
-    lns=[]
-    for i in range(len(plts)):
-        lns=lns+plts[i]
-
-    labs = [l.get_label() for l in lns]
-    ax1.legend(lns, labs, loc='upper left')
-    ax1.grid()
-    plt.title('Weighted Eff., Po=%s, %s' %(para['p_rated'], para['mode']))
-    filename=para['data_path']+'fig_weighted_eff_%s_%s.png' %(para['mode'], para['p_rated'])
-    save_fig(filename)
-
-        
 if __name__ == '__main__':
     main()
-   
-    
-        
-  
+
+
+
+
