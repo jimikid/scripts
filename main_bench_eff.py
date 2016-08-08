@@ -9,7 +9,6 @@ Created on 07/06/2016, @author: sbaek
 
   V02 07/27/2016
   - bootup process is moved to main script.  It needs to be there to change registers.
-
 """
 
 import sys, time
@@ -64,7 +63,7 @@ def save_log(exe, para):
     text_file.write(para['log'])
     text_file.close()    
 
-def measurements(para, eq, delay=4, cmd=None):
+def measurements(para, eq, delay=4, cmd=None, adj=False):
     data=[]
     fault = True
     for pts in para['SAS_pts']:
@@ -77,21 +76,21 @@ def measurements(para, eq, delay=4, cmd=None):
                     write_flash(cmd=i, delay=1) # need around 20sec to boot up
                     para['log'] += ' %s %s\n'%i # i is always in a pair with write and read
 
-        '''SAS '''
+        #'''SAS '''
         para['SAS_volt']=pts
-        sas.sas_fixed_adj(eq, CURR=14, VOLT=para['SAS_volt'])
+        #sas.sas_fixed_adj(eq, CURR=14, VOLT=para['SAS_volt'])
 
         m1=mm.Measurement(para, eq)
         fault= m1.flag
         print m1
-        m1.do_measure_pm(delay=delay, adj=False, show=True, boot_up=1.0)
+        m1.do_measure_pm(delay=delay, adj=adj, show=True, boot_up=1.0)
         data=data+m1.results
         time.sleep(4)
         results=pd.DataFrame(data) # update often, no harm, so that reduce a chance to lose data
     return results, m1
 
 
-def main(name='name', P_rated=280, mode='LL',Mnt='On', cmd=None):
+def main(name='name', P_rated=280, mode='LL', Mnt='On', cmd=None, Load_pts=None, SAS_pts=None, adj=False):
     '''
     :param name:
     :param P_rated:
@@ -102,9 +101,12 @@ def main(name='name', P_rated=280, mode='LL',Mnt='On', cmd=None):
     '''
     ''' set parameters'''
     exe, para, eq = OrderedDict(), OrderedDict(), OrderedDict()
+    start= "\n\n start at"+time.strftime(" %m/%d/%Y %I:%M \n\n")
+    print start
+    para['log'] =start
+
     para['model'], para['SN'], para['pcb']='Hornet_P3', name, '800-00504 05'
-    para['log'] ="\n\n start at"+time.strftime(" %m/%d/%Y %I:%M \n\n")
-    para['log'] +="\n Description : \n 121629026777  \n check operating range with 110uH, parm-NA-hornet1-S290-72-p540-00118-r01-v01.04.60.tch \n\n"
+    para['log'] +="\n Description : \n 121629026777   \n check operating range with 91uH (C3 Pri out), parm-NA-hornet1-S290-72-p540-00118-r01-v01.04.92.tch, 422-00158-01 \n\n"
 
     exe['measurement']=Mnt #'On'        
     para['data_file_name'] ='data'
@@ -115,12 +117,18 @@ def main(name='name', P_rated=280, mode='LL',Mnt='On', cmd=None):
     para['cmd']= cmd
     file_name='summary_%s_%.0fW' %(para['ac_mode'], para['p_rated'])
 
-    para['Load_pts'] =  [i*0.01 for i in range(50,70,10)]+[i*0.01 for i in range(70,90,5)]+[i*0.01 for i in range(90,103,2)]
+    para['Load_pts'] =  [i*0.01 for i in range(50,70,10)]+[i*0.01 for i in range(70,90,5)]+[i*0.01 for i in range(90,107,2)]
     para['SAS_pts'] =   [i*0.1 for i in range(450,350,-40)]+[i*0.1 for i in range(350,260,-20)]
+
+    if Load_pts is not None:
+        para['Load_pts'] =Load_pts
+    if SAS_pts is not None:
+        para['SAS_pts'] = SAS_pts
+
 
     ''' do measurements'''
     eq=initialize()
-    results, m1=measurements(para, eq, delay=3, cmd=cmd)
+    results, m1=measurements(para, eq, delay=3, cmd=cmd, adj=adj)
     results=results.set_index([range(len(results))])
 
 
@@ -135,22 +143,38 @@ def main(name='name', P_rated=280, mode='LL',Mnt='On', cmd=None):
 
 
 if __name__ == '__main__':
+
+    for i in range(1, 2):
+        main(name='C4_eff_%s' %i, P_rated=300, Load_pts=[0.5, 0.75, 1.0], SAS_pts=[i*0.1 for i in range(450,260,-30)], adj=True)
+
+    for i in range(1, 2):
+        main(name='C4_eff_%s' %i, P_rated=290, Load_pts=[0.5, 0.75, 1.0], SAS_pts=[i*0.1 for i in range(450,260,-30)], adj=True)
+
+    for i in range(1, 2):
+        main(name='C4_eff_%s' %i, P_rated=280, Load_pts=[0.5, 0.75, 1.0], SAS_pts=[i*0.1 for i in range(450,260,-30)], adj=True)
+
+    for i in range(1, 2):
+        main(name='C4_eff_%s' %i, P_rated=270, Load_pts=[0.5, 0.75, 1.0], SAS_pts=[i*0.1 for i in range(450,260,-30)], adj=True)
+
+
+    '''
     cmd=(('wl F60A 00\r', 'rl F60A 1\r'), ('wl F612 11\r', 'rl F612 1\r'))  #F has to be capital F, string read from serial starts with a capital letter.
     for i in range(1, 3):
-        eq, para, m1=main(name='f60A00_f61211_%s' %i, P_rated=300, mode='LL', cmd=cmd)
+        main(name='f60A00_f61211_%s' %i, P_rated=290, cmd=cmd, Load_pts=[0.5, 0.75, 1.0], SAS_pts=[27.0, 36.0, 45.0], adj=True)
+    for i in range(1, 3):
+        eq, para, m1=main(name='f60A00_f61211_%s' %i, P_rated=300, cmd=cmd)
+    for i in range(3, 5):
+        main(name='f60A00_f61211_%s' %i, P_rated=290, cmd=cmd, Load_pts=[0.5, 0.75, 1.0], SAS_pts=[27.0, 36.0, 45.0], adj=True)
+
 
     cmd=(('wl F60A 01\r', 'rl F60A 1\r'), ('wl F612 10\r', 'rl F612 1\r'))
     for i in range(1, 3):
-        eq, para, m1=main(name='f60A01_f61210_%s' %i, P_rated=300, mode='LL', cmd=cmd)
-
-    cmd=(('wl f60A 00\r', 'rl F60A 1\r'), ('wl F612 10\r', 'rl f612 1\r'))
+        main(name='f60A01_f61210_%s' %i, P_rated=290, cmd=cmd, Load_pts=[0.5, 0.75, 1.0], SAS_pts=[27.0, 36.0, 45.0], adj=True)
     for i in range(1, 3):
-        eq, para, m1=main(name='f60A00_f61210_%s' %i, P_rated=300, mode='LL', cmd=cmd)
-
-    cmd=(('wl f60A 01\r', 'rl F60A 1\r'), ('wl F612 11\r', 'rl f612 1\r'))
-    for i in range(1, 3):
-        eq, para, m1=main(name='f60A01_f61211_%s' %i, P_rated=300, mode='LL', cmd=cmd)
-
+        eq, para, m1=main(name='f60A01_f61210_%s' %i, P_rated=300, cmd=cmd)
+    for i in range(3, 5):
+        main(name='f60A01_f61210_%s' %i, P_rated=290, cmd=cmd, Load_pts=[0.5, 0.75, 1.0], SAS_pts=[27.0, 36.0, 45.0], adj=True)
+    '''
     m1.shutdown()
 
   
