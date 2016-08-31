@@ -32,19 +32,40 @@ def i2(t, Vi, fs, Ls, d, ps):
     y=(Vi*((-1 + d)*pi + 2*(th - d*th + d * ps))) / (2 * Ls * w)
     return y
 
-def L(mue, n, ri, ro, h):
-    print ' Di: %.1f [mm]' %(2*ri*1000)
-    print ' Do: %.1f [mm]' %(2*ro*1000)
-    print ' h: %.1f [mm]' % (h * 1000)
-    y=n**2*mue/2/pi*log(ro/ri)*h
-    return y
-
-def Boc(t, fs, Vop, ni,no, Aoc, t_ps):
+def Boc(t, fs, Vop, ni,no, Acoc, t_ps):
     f = fs;
     T = 1.0 / fs;
     w = 2 * pi * fs
-    y=Vop/ni*(t-t_ps-T/4)/Aoc/no
+    y=Vop/ni*(t-t_ps-T/4)/Acoc/no
     return y
+
+def Bic_pk(Vi, mue, d, Ls,  ri_ic, ni, ps, fs):
+    f = fs;
+    T = 1.0 / fs;
+    w = 2 * pi * fs
+    if d>1:
+        y = (Vi / 2 * mue * ni * ((-1 + d) * pi + 2 * ps)) / (4 * w * Ls * pi * ri_ic)
+    else:
+        y = (Vi/ 2 * mue * ni * ((1 - d) * pi + 2 * d * ps)) / (4 * w * Ls * pi * ri_ic)
+    return y
+
+
+def Boc_pk(Vi, fs, no, Ac_oc):
+    f = fs;
+    T = 1.0 / fs;
+    w = 2 * pi * fs
+    y = Vi / 2  / (4 * fs * no * Ac_oc)
+    return y
+
+def L(mue, n, ri, ro, l):
+    y=n**2*mue/2/pi*log(ro/ri)*l
+    return y
+
+def P(d, Vi, ps, Ls, fs):
+    w = 2 * pi * fs
+    y=(d*Vi**2*(pi -ps)*ps)/(w*Ls*pi)
+    return y
+
 
 def main():
     current, B_oc, B_ic = [], [], []
@@ -64,23 +85,45 @@ def main():
     t_ps = pi / 4 / (2 * pi) * T;
     deg = int(ps / 2 / pi * 360)
 
-    th = 5E-3
-    Aoc = 0.5 * th
-    no = 1
+    # Outer core #
+    ni, no = 15, 1;
+    mue = 4 * pi * 1E-7;
 
-    Aic = 0.0023840506;
-    ni, no = 15, 1
-    mue = 4 * pi * 1E-7 * 300;
-    riic = 14.7 / 2 * 1E-3;
-    #roic= sqrt(e) * riic
-    roic=26.9/2 *1E-3;
-    h=11.2*1E-3*46;
+    print '\n Outer cores specs'
+    ri_oc=36.0/2*1E-3;
+    ro_oc=55.0/2*1E-3;
+    print ' Di_oc :%.2f, Do_oc : %.2f [mm]' %(ri_oc*2*1E3, ro_oc*2*1E3)
+    # ro_oc= sqrt(e) * riic
+    h_oc = 25.0 * 1E-3;
+    n_oc=20;
+    l_oc=h_oc* n_oc;
+    Ac_oc=(ro_oc-ri_oc)*l_oc
+    print ' length :%.2f [m], Ac_oc : %.2f [cm^2]' %(l_oc, Ac_oc * 1E4)
 
-    F = (mue * ni * log(roic / riic) / (2 * pi * (riic - roic)))
+    # Inner core #
+    print '\n Inner cores specs'
+    mue_ic = mue * 300;
+    ri_ic = 14.7 / 2 * 1E-3;
+    ro_ic = 26.9 / 2 * 1E-3;
+    print ' Di_ic :%.2f, Do_ic : %.2f [mm]' %(ri_ic * 2 * 1E3, ro_ic * 2 * 1E3)
+    # ro_ic= sqrt(e) * ri_ic
+    h_ic = 11.2 * 1E-3;
+    n_ic = 46;
+    l_ic = h_oc * n_oc;
+    Ac_ic = (ro_ic - ri_ic) * l_ic
+    print ' length :%.2f [m], Ac_ic : %.2f [cm^2] \n' %(l_oc, Ac_ic * 1E4)
+
+    F = (mue_ic * ni * log(ro_ic / ri_ic) / (2 * pi * (ri_ic - ro_ic)))
 
     ''' Ls calculation '''
-    Ls = L(mue, n=ni, ri=riic, ro=roic, h=h)
-    print 'Ls : %.2f [mH]' %(Ls*1000)
+    Ls = L(mue_ic, n=ni, ri=ri_ic, ro=ro_ic, l=l_ic)
+    print '\n Ls : %.2f [mH]' %(Ls*1000)
+
+    ''' B peaks '''
+    Bi_pkpk=Bic_pk(Vi=Vi, mue=mue_ic, d=d, Ls=Ls, ri_ic=ri_ic, ni=ni, ps=ps, fs=fs)
+    Bo_pkpk=Boc_pk(Vi=Vi, fs=fs, no=no, Ac_oc=Ac_oc)
+    print '\n Bi_pkpk : %.2f, Bo_pkpk : %.2f [T]' % (Bi_pkpk, Bo_pkpk)
+
 
     ''' current'''
     t1 = [i * step for i in range(0, int(t_ps / step), resolution)]
@@ -115,13 +158,21 @@ def main():
     ''' Boc '''
     t1 = [i * step for i in range(0, int(t_ps / step), resolution)]
     for i in t1:
-        B_oc.append(-Boc(t=i + T/2, fs=fs, Vop=Vop, ni=ni, no=no, Aoc=Aoc, t_ps=t_ps))
+        B_oc.append(-Boc(t=i + T/2, fs=fs, Vop=Vop, ni=ni, no=no, Acoc=Ac_oc, t_ps=t_ps))
     t2 = [i * step for i in range(int(t_ps / step), int((t_ps + T / 2) / step), resolution)]
     for i in t2:
-        B_oc.append(Boc(t=i, fs=fs, Vop=Vop, ni=ni, no=no, Aoc=Aoc, t_ps=t_ps))
+        B_oc.append(Boc(t=i, fs=fs, Vop=Vop, ni=ni, no=no, Acoc=Ac_oc, t_ps=t_ps))
     t3 = [i * step for i in range(int((t_ps + T / 2) / step), int(T / step), resolution)]
     for i in t3:
-        B_oc.append(-Boc(t=i - T/2, fs=fs, Vop=Vop, ni=ni, no=no, Aoc=Aoc, t_ps=t_ps))
+        B_oc.append(-Boc(t=i - T/2, fs=fs, Vop=Vop, ni=ni, no=no, Acoc=Ac_oc, t_ps=t_ps))
+
+    print '\n Bo_max: %.2f, Bo_min: %.2f' %(max(B_oc), min(B_oc))
+    print ' Bi_max: %.2f, Bi_min: %.2f' % (max(B_ic), min(B_ic))
+    print '\n i_max: %.2f, i_min: %.2f' % (max(current), min(current))
+
+    ''' Power calculation '''
+    Po = P(d=d, Vi=Vi, ps=ps, Ls=Ls, fs=fs)
+    print '\n Po : %.2f [kW] at %.1f deg, d:%.2f' % (Po *1E-3, deg, d)
 
     data = OrderedDict()
     data.update({'t': t})
