@@ -17,34 +17,40 @@ import analysis.figure_functions as ff
 
 current, B_oc, B_oc_avg, B_ic = [], [], [], []
 step = 1E-7
-resolution = 2
+resolution = 1
 
-fs = 20000;
+fs = 20000.0;
 T = 1.0 / fs;
-ps = pi / 4;
+d = 1.4;
+deg = 30.0;
+time_shift=T/4.0;
+
+ps = deg / 360.0*2.0*pi;
+shift=int(time_shift / step);
 
 t_ps = T * ps / (2 * pi)
-Vi = 3000;
-d = 0.8;
+Vi = 3000.0;
 Vop = Vi * d;
 Vb = Vi;
 
-t_ps = pi / 4 / (2 * pi) * T;
-deg = int(ps / 2 / pi * 360)
+t_ps = ps / (2 * pi) * T;
+#deg = int(ps / 2 / pi * 360)
 
 # Outer core #
 ni, no = 15, 1;
-mue = 4 * pi * 1E-7;
+mue = 4.0 * pi * 1E-7;
 
 print '\n Outer cores specs'
 ri_oc = 36.0 / 2 * 1E-3;
 ro_oc = 55.0 / 2 * 1E-3;
+
+stack=0.8;
 print ' Di_oc :%.2f, Do_oc : %.2f [mm]' % (ri_oc * 2 * 1E3, ro_oc * 2 * 1E3)
 # ro_oc= sqrt(e) * riic
 h_oc = 25.0 * 1E-3;
 n_oc = 20;
 l_oc = h_oc * n_oc;
-Ac_oc = (ro_oc - ri_oc) * l_oc
+Ac_oc = stack*(ro_oc - ri_oc) * l_oc
 V_oc = pi * (ro_oc ** 2 - ri_oc ** 2) * l_oc;
 print ' length :%.2f [m], Ac_oc : %.2f [cm^2], V_oc : %.2f [cm^2]' % (l_oc, Ac_oc * 1E4, V_oc * 1E6)
 
@@ -71,8 +77,6 @@ T = 1.0 / fs;
 w = 2 * pi * fs
 
 Fi = (mue_ic * ni * log(ro_ic / ri_ic) / (2 * pi * (ro_ic - ri_ic)))
-
-
 
 
 def i1(t, Ls):
@@ -149,6 +153,8 @@ def main():
     for i in t4:
         current.append(-i2(t=i - T / 2, Ls=Ls))
     t = t1 + t2 + t3 + t4
+    t = [i + time_shift for i in t]
+
 
     ''' Bic'''
     t1 = [i * step for i in range(0, int(t_ps / step), resolution)]
@@ -163,7 +169,6 @@ def main():
     t4 = [i * step for i in range(int(T / step / 2) + int(t_ps / step), int(T / step), resolution)]
     for i in t4:
         B_ic.append(-Bi2(t=i - T / 2, F=Fi, Ls=Ls))
-    t = t1 + t2 + t3 + t4
 
     ''' Boc '''
     t1 = [i * step for i in range(0, int(t_ps / step), resolution)]
@@ -189,6 +194,10 @@ def main():
     P_loss_oc=Loss_oc(k_oc=k_oc, beta_oc=beta_oc, B=Bo_pk, V_oc=V_oc)
     print '\n P_loss_oc : %.1f [W]' % (P_loss_oc)
 
+    ''' rms '''
+    a = [(i) ** 2 for i in current]
+    Irms=sqrt(sum(a) / len(a))
+    print '\n Irms : %.1f [Arms]' % (Irms)
 
     data = OrderedDict()
     data.update({'t': t})
@@ -196,11 +205,14 @@ def main():
     data.update({'Boc_avg_%s_%s'%(deg, d): B_oc_avg})
     data.update({'Bic_%s_%s'%(deg, d): B_ic})
     df = pd.DataFrame(data)
-    df.to_csv('data_L%.1f_d%.1f_deg%s.csv' % (Ls, d, deg), index=False)
 
-    ff.plot([[t, current]], title='current')
-    ff.plot([[t, B_oc_avg], [t, B_ic]], legend=['Boc', 'Bic'], title='B1')
-    ff.plot([[t, B_oc_avg], [t, B_ic]], legend=['Boc', 'Bic'], title='B2', combine=True)
+    spec = 'L%.1f_d%.1f_deg%s' % (Ls * 1000, d, deg)
+    df.to_csv('data_%s.csv' % (spec), index=False)
+    ff.plot()
+
+    ff.plot([[t, current]], title='current_%s'%spec)
+    #ff.plot([[t, B_oc_avg], [t, B_ic]], legend=['Boc', 'Bic'], title='B1_%s'%spec)
+    ff.plot([[t, B_oc_avg], [t, B_ic]], legend=['Boc', 'Bic'], title='B2_%s'%spec, combine=True)
     pass
 
 if __name__ == '__main__':
