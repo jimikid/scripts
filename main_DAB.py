@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import analysis.figure_functions as ff
 
-current, B_oc, B_oc_avg, B_ic = [], [], [], []
+current, B_oc, B_ic = [], [], []
 step = 1E-7
 resolution = 1
 
@@ -97,7 +97,7 @@ def Bi2(t, F, Ls):
     y=F*i2(t, Ls)
     return y
 
-def Boc_avg(t):
+def Boc(t):
     y=Vop/ni*(t-t_ps-T/4)/Ac_oc/no
     return y
 
@@ -152,8 +152,6 @@ def main():
     t4 = [i * step for i in range(int(T / step / 2) + int(t_ps / step), int(T / step), resolution)]
     for i in t4:
         current.append(-i2(t=i - T / 2, Ls=Ls))
-    t = t1 + t2 + t3 + t4
-    t = [i + time_shift for i in t]
 
 
     ''' Bic'''
@@ -173,15 +171,15 @@ def main():
     ''' Boc '''
     t1 = [i * step for i in range(0, int(t_ps / step), resolution)]
     for i in t1:
-        B_oc_avg.append(-Boc_avg(t=i + T/2))
+        B_oc.append(-Boc(t=i + T/2))
     t2 = [i * step for i in range(int(t_ps / step), int((t_ps + T / 2) / step), resolution)]
     for i in t2:
-        B_oc_avg.append(Boc_avg(t=i))
+        B_oc.append(Boc(t=i))
     t3 = [i * step for i in range(int((t_ps + T / 2) / step), int(T / step), resolution)]
     for i in t3:
-        B_oc_avg.append(-Boc_avg(t=i - T/2))
+        B_oc.append(-Boc(t=i - T/2))
 
-    print '\n Bo_avg_max: %.2f, Bo_avg_min: %.2f' %(max(B_oc_avg), min(B_oc_avg))
+    print '\n Bo_max: %.2f, Bo_min: %.2f' %(max(B_oc), min(B_oc))
     print ' Bi_max: %.2f, Bi_min: %.2f' % (max(B_ic), min(B_ic))
     print '\n i_max: %.2f, i_min: %.2f' % (max(current), min(current))
 
@@ -199,20 +197,41 @@ def main():
     Irms=sqrt(sum(a) / len(a))
     print '\n Irms : %.1f [Arms]' % (Irms)
 
+    ''' two cycle'''
+    cycle=2
+    t = [i * step for i in range(0, int(cycle * T / step), resolution)]
+    Is = current * cycle
+    Bi=B_ic*cycle
+    Bo=B_oc*cycle
+
+    ''' shift '''
+    shift=T*45.0/360+t_ps/2+T/2
+    t = [i * step for i in range(0, int( T / step), resolution)]
+    print len(Is)
+    print int( shift / step),int( (T+shift) / step)
+    print len(t)
+    Is = Is[int( shift / step):int( (T+shift) / step)]
+    Bi = Bi[int( shift / step):int( (T+shift) / step)]
+    Bo = Bo[int( shift / step):int( (T+shift) / step)]
+
+    print len(Is)
+    print len(Bi)
+    print len(Bo)
+
     data = OrderedDict()
     data.update({'t': t})
-    data.update({'i_%s_%s'%(deg, d): current})
-    data.update({'Boc_avg_%s_%s'%(deg, d): B_oc_avg})
-    data.update({'Bic_%s_%s'%(deg, d): B_ic})
+    data.update({'is_%s_%s'%(deg, d): Is})
+    data.update({'Boc_%s_%s'%(deg, d): Bo})
+    data.update({'Bic_%s_%s'%(deg, d): Bi})
     df = pd.DataFrame(data)
 
     spec = 'L%.1f_d%.1f_deg%s' % (Ls * 1000, d, deg)
     df.to_csv('data_%s.csv' % (spec), index=False)
     ff.plot()
 
-    ff.plot([[t, current]], title='current_%s'%spec)
+    ff.plot([[t, Is]], title='current_%s'%spec)
     #ff.plot([[t, B_oc_avg], [t, B_ic]], legend=['Boc', 'Bic'], title='B1_%s'%spec)
-    ff.plot([[t, B_oc_avg], [t, B_ic]], legend=['Boc', 'Bic'], title='B2_%s'%spec, combine=True)
+    ff.plot([[t, Bo], [t, Bi]], legend=['Boc', 'Bic'], title='B2_%s'%spec, combine=True)
     pass
 
 if __name__ == '__main__':
