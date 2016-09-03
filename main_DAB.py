@@ -15,26 +15,16 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import analysis.figure_functions as ff
 
+import analysis.waveform_func as wf
+
+
 current, B_oc, B_ic = [], [], []
 step = 1E-7
 resolution = 1
 
 fs = 20000.0;
 T = 1.0 / fs;
-d = 1.4;
-deg = 30.0;
-time_shift=T/4.0;
 
-ps = deg / 360.0*2.0*pi;
-shift=int(time_shift / step);
-
-t_ps = T * ps / (2 * pi)
-Vi = 3000.0;
-Vop = Vi * d;
-Vb = Vi;
-
-t_ps = ps / (2 * pi) * T;
-#deg = int(ps / 2 / pi * 360)
 
 # Outer core #
 ni, no = 15, 1;
@@ -79,40 +69,41 @@ w = 2 * pi * fs
 Fi = (mue_ic * ni * log(ro_ic / ri_ic) / (2 * pi * (ro_ic - ri_ic)))
 
 
-def i1(t, Ls):
+def i1(Vi, t, Ls, d, ps):
     th = 2 * pi * f * t
     y=(Vi*((-1 + d)*pi + 2*(th + d*th - d * ps))) / (2 * Ls * w)
     return y
 
-def i2(t, Ls):
+def i2(Vi, t, Ls, d, ps):
     th = 2 * pi * f * t
     y=(Vi*((-1 + d)*pi + 2*(th - d*th + d * ps))) / (2 * Ls * w)
     return y
 
-def Bi1(t, F, Ls):
-    y=F*i1(t, Ls)
+def Bi1(Vi, t, F, Ls, d, ps ):
+    y=F*i1(Vi, t, Ls, d, ps)
     return y
 
-def Bi2(t, F, Ls):
-    y=F*i2(t, Ls)
+def Bi2(Vi, t, F, Ls, d, ps):
+    y=F*i2(Vi, t, Ls, d, ps)
     return y
 
-def Boc(t):
+def Boc(Vop, t, t_ps):
     y=Vop/ni*(t-t_ps-T/4)/Ac_oc/no
     return y
 
-def Bic_pk(Ls, F, t_ps):
+def Bic_pk(Vi, Ls, F, d, ps):
     if d>1:
         #y = (Vi / 2 * mue * ni * ((-1 + d) * pi + 2 * ps)) / (4 * w * Ls * pi * ri_ic)
-        y= F*i1(t_ps, Ls)
+        t_ps=ps/2/pi*T;
+        y= F*i1(Vi=Vi, t=t_ps, Ls=Ls, d=d, ps=ps)
     else:
         #y = (Vi/ 2 * mue * ni * ((1 - d) * pi + 2 * d * ps)) / (4 * w * Ls * pi * ri_ic)
-        y = F*i2(T/2, Ls)
+        y = F*i2(Vi=Vi, t=T/2, Ls=Ls, d=d, ps=ps)
 
     return y
 
-def Boc_pk():
-    y = Vi * T / 2 / 2/ ( ni * Ac_oc)
+def Boc_pk(Vop):
+    y = Vop/ni * T / 2.0 / 2.0/ Ac_oc
     return y
 
 def L(mue, n, ri, ro, l):
@@ -128,56 +119,101 @@ def Loss_oc(k_oc, B, beta_oc, V_oc):
     y=k_oc*B**beta_oc*V_oc
     return y
 
+def bound_low(Vi, ps, Ls):
+    Pb=Vi**2/(Ls*w)
+    y=Pb*(pi-ps)*ps/(pi-2*ps)
+    return y
+
+def bound_high(Vi, ps, Ls):
+    Pb=Vi**2/(Ls*w)
+    y=Pb*((pi-2* ps)*(pi-ps)*ps)/(pi**2)
+    return y
+
+
+def read(filepath, filename):
+    file = filepath + filename + '.csv'
+    print ' read file %s' % file
+    df = pd.read_csv(file)
+    #df = convert_1st_key_t(df)  # change the first key(column) to 't' which is compatible with waveform_func.py
+
+    waves = wf.waveforms(filename=filename, filepath=filepath, df=df)
+    waves.get_rms()
+    waves.get_avg()
+    waves.get_pkpk()
+    zeros = waves.get_zero_crossing(waves.get_labels()[0])
+    freq = waves.get_freq(waves.get_labels()[0], zeros)
+    print ' %.1f kHz' % (freq / 1000)
+
+    print waves
+    waves.plot_all()
+
+
+
 def main():
+    d = 1.4;
+    deg = 30.0;
+    time_shift = T / 4.0;
+    ps = deg / 360.0 * 2.0 * pi;
+    shift = int(time_shift / step);
+
+    t_ps = T * ps / (2 * pi)
+    Vi = 3000.0;
+    Vop = Vi * d;
+    Vb = Vi;
+
+    t_ps = ps / (2 * pi) * T;
+    # deg = int(ps / 2 / pi * 360)
+
+
     ''' Ls calculation '''
     Ls = L(mue_ic, n=ni, ri=ri_ic, ro=ro_ic, l=l_ic)
     print '\n Ls : %.2f [mH]' %(Ls*1000)
 
     ''' B peaks '''
-    Bi_pk=Bic_pk(Ls=Ls, F=Fi, t_ps=t_ps)
-    Bo_pk=Boc_pk()
+    Bi_pk=Bic_pk(Vi=Vi, Ls=Ls, F=Fi, d=d, ps=ps)
+    Bo_pk=Boc_pk(Vop)
     print '\n Calculation : Bi_pkpk : %.2f, Bo_pkpk : %.2f [T]' % (Bi_pk*2, Bo_pk*2)
 
 
     ''' current'''
     t1 = [i * step for i in range(0, int(t_ps / step), resolution)]
     for i in t1:
-        current.append(i1(t=i, Ls=Ls))
+        current.append(i1(Vi=Vi,t=i, Ls=Ls, d=d, ps=ps))
     t2 = [i * step for i in range(int(t_ps / step), int(T / step / 2), resolution)]
     for i in t2:
-        current.append(i2(t=i, Ls=Ls))
+        current.append(i2(Vi=Vi,t=i, Ls=Ls, d=d, ps=ps))
     t3 = [i * step for i in range(int(T / step / 2), int(T / step / 2) + int(t_ps / step), resolution)]
     for i in t3:
-        current.append(-i1(t=i - T / 2, Ls=Ls))
+        current.append(-i1(Vi=Vi,t=i - T / 2, Ls=Ls, d=d, ps=ps))
     t4 = [i * step for i in range(int(T / step / 2) + int(t_ps / step), int(T / step), resolution)]
     for i in t4:
-        current.append(-i2(t=i - T / 2, Ls=Ls))
+        current.append(-i2(Vi=Vi,t=i - T / 2, Ls=Ls, d=d, ps=ps))
 
 
     ''' Bic'''
     t1 = [i * step for i in range(0, int(t_ps / step), resolution)]
     for i in t1:
-        B_ic.append(Bi1(t=i, F=Fi, Ls=Ls))
+        B_ic.append(Bi1(Vi=Vi, t=i, F=Fi, Ls=Ls, d=d, ps=ps))
     t2 = [i * step for i in range(int(t_ps / step), int(T / step / 2), resolution)]
     for i in t2:
-        B_ic.append(Bi2(t=i, F=Fi, Ls=Ls))
+        B_ic.append(Bi2(Vi=Vi, t=i, F=Fi, Ls=Ls, d=d, ps=ps))
     t3 = [i * step for i in range(int(T / step / 2), int(T / step / 2) + int(t_ps / step), resolution)]
     for i in t3:
-        B_ic.append(-Bi1(t=i - T / 2, F=Fi, Ls=Ls))
+        B_ic.append(-Bi1(Vi=Vi, t=i - T / 2, F=Fi, Ls=Ls, d=d, ps=ps))
     t4 = [i * step for i in range(int(T / step / 2) + int(t_ps / step), int(T / step), resolution)]
     for i in t4:
-        B_ic.append(-Bi2(t=i - T / 2, F=Fi, Ls=Ls))
+        B_ic.append(-Bi2(Vi=Vi, t=i - T / 2, F=Fi, Ls=Ls, d=d, ps=ps))
 
     ''' Boc '''
     t1 = [i * step for i in range(0, int(t_ps / step), resolution)]
     for i in t1:
-        B_oc.append(-Boc(t=i + T/2))
+        B_oc.append(-Boc(Vop=Vop, t=i + T/2, t_ps=t_ps))
     t2 = [i * step for i in range(int(t_ps / step), int((t_ps + T / 2) / step), resolution)]
     for i in t2:
-        B_oc.append(Boc(t=i))
+        B_oc.append(Boc(Vop=Vop,t=i,  t_ps=t_ps))
     t3 = [i * step for i in range(int((t_ps + T / 2) / step), int(T / step), resolution)]
     for i in t3:
-        B_oc.append(-Boc(t=i - T/2))
+        B_oc.append(-Boc(Vop=Vop,t=i - T/2,  t_ps=t_ps))
 
     print '\n Bo_max: %.2f, Bo_min: %.2f' %(max(B_oc), min(B_oc))
     print ' Bi_max: %.2f, Bi_min: %.2f' % (max(B_ic), min(B_ic))
@@ -207,16 +243,9 @@ def main():
     ''' shift '''
     shift=T*45.0/360+t_ps/2+T/2
     t = [i * step for i in range(0, int( T / step), resolution)]
-    print len(Is)
-    print int( shift / step),int( (T+shift) / step)
-    print len(t)
     Is = Is[int( shift / step):int( (T+shift) / step)]
     Bi = Bi[int( shift / step):int( (T+shift) / step)]
     Bo = Bo[int( shift / step):int( (T+shift) / step)]
-
-    print len(Is)
-    print len(Bi)
-    print len(Bo)
 
     data = OrderedDict()
     data.update({'t': t})
@@ -232,7 +261,70 @@ def main():
     ff.plot([[t, Is]], title='current_%s'%spec)
     #ff.plot([[t, B_oc_avg], [t, B_ic]], legend=['Boc', 'Bic'], title='B1_%s'%spec)
     ff.plot([[t, Bo], [t, Bi]], legend=['Boc', 'Bic'], title='B2_%s'%spec, combine=True)
-    pass
+
+
+    ''' Power with k=d '''
+    res=20
+    Rad = [i * pi/2/res for i in range(0, res)];
+    k = [i *0.1 for i in range(6, 15, 2)];
+    data_sets=[];
+    xlimit=(0, pi / 2);
+    ylimit=(0, 12000);
+    limit, legend = [], []
+
+    for j in k:
+        power = [];
+        l_low, l_high=[],[];
+
+        for i in Rad:
+            power.append(P(d=j, Vi=Vi, ps=i, Ls=Ls, fs=fs))
+        limit.append([xlimit, ylimit])
+        legend.append('d=%.1f' %j)
+        data_sets.append([Rad, power])
+
+    for i in Rad:
+        l_low.append(bound_low(Vi=Vi,ps=i, Ls=Ls))
+        l_high.append(bound_high(Vi=Vi,ps=i, Ls=Ls))
+    limit.append([xlimit, ylimit])
+    limit.append([xlimit, ylimit])
+    legend.append('')
+    legend.append('')
+    data_sets.append([Rad, l_low])
+    data_sets.append([Rad, l_high])
+    ff.plot(data_sets,  title='Po', combine=True, limit=limit,legend=legend)
+
+
+    ''' B_pk with k=d '''
+    res=20
+    Rad = [i * pi/2/res for i in range(0, res)];
+    k = [i *0.1 for i in range(6, 15, 2)];
+    data_sets=[];
+    xlimit=(0, pi / 2);
+    ylimit=(0, 1.5);
+    limit, legend = [], []
+
+    for j in k:
+        Bi_pk = [];
+        for i in Rad:
+            Bi_pk.append(Bic_pk(Vi=Vi, Ls=Ls, F=Fi, d=j, ps=i))
+        limit.append([xlimit, ylimit])
+        legend.append('d=%.1f' %j)
+        data_sets.append([Rad, Bi_pk])
+    ff.plot(data_sets,  title='Bic_pk', combine=True, limit=limit,legend=legend)
+
+    data_sets = [];
+    for j in k:
+        Bo_pk = [];
+        for i in Rad:
+            Vop=Vi*j
+            Bo_pk.append(Boc_pk(Vop=Vop))
+        limit.append([xlimit, ylimit])
+        legend.append('d=%.1f' %j)
+        data_sets.append([Rad, Bo_pk])
+    ff.plot(data_sets,  title='Boc_pk', combine=True, limit=limit,legend=legend)
+
+    ''' read file'''
+    read(filepath='', filename='data_%s' % (spec))
 
 if __name__ == '__main__':
     main()
