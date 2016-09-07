@@ -13,9 +13,9 @@ from math import *
 import pandas as pd
 import matplotlib.pyplot as plt
 import pandas as pd
-import analysis.figure_functions as ff
+import data_aq_lib.analysis.figure_functions as ff
 
-import analysis.waveform_func as wf
+import data_aq_lib.analysis.waveform_func as wf
 
 
 current, B_oc, B_ic = [], [], []
@@ -164,142 +164,140 @@ def read(filepath, filename):
     waves.plot_all()
 
 
+''' Ls calculation '''
+Ls = L(mue_ic, n=ni, ri=ri_ic, ro=ro_ic, l=l_ic)#*65.4/68.3 #based on effective Ac
+print '\n Ls : %.2f [mH], length :%.2f' %(Ls*1000, l_ic)
 
-def main():
-    ''' Ls calculation '''
-    Ls = L(mue_ic, n=ni, ri=ri_ic, ro=ro_ic, l=l_ic)#*65.4/68.3 #based on effective Ac
-    print '\n Ls : %.2f [mH], length :%.2f' %(Ls*1000, l_ic)
+''' Loss calculation '''
+data_sets=[];
+xlimit=(20, 60);
+ylimit=(0, 100);
+limit, legend = [], []
 
-    ''' Loss calculation '''
-    data_sets=[];
-    xlimit=(20, 60);
-    ylimit=(0, 100);
-    limit, legend = [], []
+power, loss_ic, loss_oc, loss_c, Ii = [], [], [], [],[];
 
-    power, loss_ic, loss_oc, loss_c, Ii = [], [], [], [],[];
+d=1.0;
+Vi = 3000.0;
+Vop = Vi * d;
 
-    d=1.0;
-    Vi = 3000.0;
-    Vop = Vi * d;
-
-    deg = [23, 30, 31, 36, 48, 55]
-    Vo = [40, 60, 80]
+deg = [23, 30, 31, 36, 48, 55]
+Vo = [40, 60, 80]
 
 
-    power, loss_ic, loss_oc, loss_c, Ii = [], [], [], [], [];
-    data_sets_p = [];
-    data_sets_i = [];
-    data_sets_l = [];
+power, loss_ic, loss_oc, loss_c, Ii = [], [], [], [], [];
+data_sets_p = [];
+data_sets_i = [];
+data_sets_l = [];
 
 
-    #Vin=[0.5*3000,1.0*3000]
-    #k=[100.0/(Vi/15.0), 150.0/(Vi/15.0)]
-    for j in Vo:
-        Vi=j*15.0/d
-        Vop=Vi*d
-        power, loss_ic, loss_oc, loss_c,current  = [], [], [], [], [];
-        for i in deg:
-            ps = i / 360.0 * 2 * pi;
-            Bi_pk = Bic_pk(Vi=Vi, Ls=Ls, F=Fi, d=d, ps=ps)
-            Bo_pk = Boc_pk(Vop)
-            Po = P(d=d, Vi=Vi, ps=ps, Ls=Ls, fs=fs)
-            P_loss_oc = Loss_oc(k_oc=k_oc, beta_oc=beta_oc, B=Bo_pk, V_oc=V_oc)
-            P_loss_ic = Loss_ic(k_ic=k_ic, Bi=Bi_pk, alpha_ic=alpha_ic, beta_ic=beta_ic, V_ic=V_ic, fs=fs, ps=ps)
-            Iin = Irms(Vi=Vi, Ls=Ls, d=d, ps=ps)
-            P_loss_c = P_loss_ic + P_loss_oc
+#Vin=[0.5*3000,1.0*3000]
+#k=[100.0/(Vi/15.0), 150.0/(Vi/15.0)]
+for j in Vo:
+    Vi=j*15.0/d
+    Vop=Vi*d
+    power, loss_ic, loss_oc, loss_c,current  = [], [], [], [], [];
+    for i in deg:
+        ps = i / 360.0 * 2 * pi;
+        Bi_pk = Bic_pk(Vi=Vi, Ls=Ls, F=Fi, d=d, ps=ps)
+        Bo_pk = Boc_pk(Vop)
+        Po = P(d=d, Vi=Vi, ps=ps, Ls=Ls, fs=fs)
+        P_loss_oc = Loss_oc(k_oc=k_oc, beta_oc=beta_oc, B=Bo_pk, V_oc=V_oc)
+        P_loss_ic = Loss_ic(k_ic=k_ic, Bi=Bi_pk, alpha_ic=alpha_ic, beta_ic=beta_ic, V_ic=V_ic, fs=fs, ps=ps)
+        Iin = Irms(Vi=Vi, Ls=Ls, d=d, ps=ps)
+        P_loss_c = P_loss_ic + P_loss_oc
 
-            power.append(P(d=d, Vi=Vi, ps=ps, Ls=Ls, fs=fs))
-            loss_c.append(P_loss_c)
-            current.append(Iin)
-            limit.append([xlimit, ylimit])
+        power.append(P(d=d, Vi=Vi, ps=ps, Ls=Ls, fs=fs))
+        loss_c.append(P_loss_c)
+        current.append(Iin)
+        limit.append([xlimit, ylimit])
 
-            print '\n Po : %.2f [kW], Irms=%.1f at d=% .1f, Vi=% .1f, Vo=% .1f, deg :%.1f ' % (Po/1000, Iin, d, Vi, j, i)
-            print '\n Bi_pk : %.2f, Bo_pk : %.2f [T]' % (Bi_pk, Bo_pk)
-            print '\n P_loss_oc: %.1f, P_loss_ic: %.1f,  loss_c :: %.1f' % (P_loss_oc, P_loss_ic, P_loss_c)
-        legend.append('Cal Vo=%.1f' % (Vi/15.0*d))
-        data_sets_l.append([deg, loss_c])
-        data_sets_p.append([deg, power])
-    ff.plot(data_sets_l, title='test1', combine=True, limit=limit, legend=legend)
-    ff.plot(data_sets_p, title='test2', combine=True, legend=legend)
+        print '\n Po : %.2f [kW], Irms=%.1f at d=% .1f, Vi=% .1f, Vo=% .1f, deg :%.1f ' % (Po/1000, Iin, d, Vi, j, i)
+        print '\n Bi_pk : %.2f, Bo_pk : %.2f [T]' % (Bi_pk, Bo_pk)
+        print '\n P_loss_oc: %.1f, P_loss_ic: %.1f,  loss_c :: %.1f' % (P_loss_oc, P_loss_ic, P_loss_c)
+    legend.append('Cal Vo=%.1f' % (Vi/15.0*d))
+    data_sets_l.append([deg, loss_c])
+    data_sets_p.append([deg, power])
+ff.plot(data_sets_l, title='test1', combine=True, limit=limit, legend=legend)
+ff.plot(data_sets_p, title='test2', combine=True, legend=legend)
 
 
-    ''' measurements'''
-    names = deg
-    Rp = (0.297 + 0.00711 * 16 * 1.35) * 1e-3 * 16 ** 2;
-    dict_sets_l = OrderedDict()
-    dict_sets_pi = OrderedDict()
-    dict_sets_po = OrderedDict()
-    dict_sets_i = OrderedDict()
-    x = []
-    y = []
+''' measurements'''
+names = deg
+Rp = (0.297 + 0.00711 * 16 * 1.35) * 1e-3 * 16 ** 2;
+dict_sets_l = OrderedDict()
+dict_sets_pi = OrderedDict()
+dict_sets_po = OrderedDict()
+dict_sets_i = OrderedDict()
+x = []
+y = []
+for name in names:
+    deg, loss = [], []
+    file = '%sdeg.csv' % name
+    print ' read file %s' % file
+    df = pd.read_csv(file)
+    Vin = df['U-E4']
+    Iin = df['I-E3']
+    Pi = df['P-E3']
+    Po = df['P-E4']
+
+    Loss = Pi - Po- Rp*Iin**2
+    print Loss[0]
+    #Loss = Pi - Po
+    print Loss[0]
+
+    d_Vin = []
+    d_Pi = []
+    d_Po = []
+    d_Loss = []
+
+    #Vo = [50, 70, 90]
+    for i in Vo:
+        for j in range(len(Vin)):
+            tol = 1.5
+            try:
+                if (Vin[j] > (i - tol)) and (Vin[j] < (i + tol)):
+                    d_Vin.append(Vin[j])
+                    d_Pi.append(Pi[j])
+                    d_Po.append(Po[j])
+                    print Vin[j], Pi[j], Po[j], Pi[j] - Po[j]
+                    d_Loss.append(Loss[j])
+                    break
+                    # print d_Vin, d_Loss
+            except:
+                pass
+        dict_sets_l.update({str(name): d_Loss})
+        dict_sets_po.update({str(name): d_Po})
+        dict_sets_pi.update({str(name): d_Pi})
+
+deg = names
+
+
+for i in range(len(Vo)):
+    loss, Po, Pi = [], [], []
     for name in names:
-        deg, loss = [], []
-        file = '%sdeg.csv' % name
-        print ' read file %s' % file
-        df = pd.read_csv(file)
-        Vin = df['U-E4']
-        Iin = df['I-E3']
-        Pi = df['P-E3']
-        Po = df['P-E4']
+        loss.append(dict_sets_l[str(name)][i])
+        Po.append(dict_sets_po[str(name)][i])
+        Pi.append(dict_sets_pi[str(name)][i])
 
-        Loss = Pi - Po- Rp*Iin**2
-        print Loss[0]
-        #Loss = Pi - Po
-        print Loss[0]
+    legend.append('Meas Vo=%s' % (Vo[i]))
+    data_sets_l.append([deg, loss])
 
-        d_Vin = []
-        d_Pi = []
-        d_Po = []
-        d_Loss = []
+    legend.append('Meas Vo=%s' % (Vo[i]))
+    #data_sets_p.append([deg, Po])
+    data_sets_p.append([deg, Pi])
 
-        #Vo = [50, 70, 90]
-        for i in Vo:
-            for j in range(len(Vin)):
-                tol = 1.5
-                try:
-                    if (Vin[j] > (i - tol)) and (Vin[j] < (i + tol)):
-                        d_Vin.append(Vin[j])
-                        d_Pi.append(Pi[j])
-                        d_Po.append(Po[j])
-                        print Vin[j], Pi[j], Po[j], Pi[j] - Po[j]
-                        d_Loss.append(Loss[j])
-                        break
-                        # print d_Vin, d_Loss
-                except:
-                    pass
-            dict_sets_l.update({str(name): d_Loss})
-            dict_sets_po.update({str(name): d_Po})
-            dict_sets_pi.update({str(name): d_Pi})
+#limit.append([xlimit, ylimit])
 
-    deg = names
+ff.plot([deg, loss])
+print data_sets_p
+
+ff.plot(data_sets_l, title='loss1', combine=True, limit=limit, legend=legend, figsize=(8, 5))
+ff.plot(data_sets_p, title='Po1', combine=True,  legend=legend, figsize=(8, 5))
+
+data=pd.DataFrame()
+data.append(data_sets_l)
 
 
-    for i in range(len(Vo)):
-        loss, Po, Pi = [], [], []
-        for name in names:
-            loss.append(dict_sets_l[str(name)][i])
-            Po.append(dict_sets_po[str(name)][i])
-            Pi.append(dict_sets_pi[str(name)][i])
-
-        legend.append('Meas Vo=%s' % (Vo[i]))
-        data_sets_l.append([deg, loss])
-
-        legend.append('Meas Vo=%s' % (Vo[i]))
-        #data_sets_p.append([deg, Po])
-        data_sets_p.append([deg, Pi])
-
-    #limit.append([xlimit, ylimit])
-
-    ff.plot([deg, loss])
-    print data_sets_p
-
-    ff.plot(data_sets_l, title='loss1', combine=True, limit=limit, legend=legend, figsize=(8, 5))
-    ff.plot(data_sets_p, title='Po1', combine=True,  legend=legend, figsize=(8, 5))
-
-
-
-if __name__ == '__main__':
-    main()
 
 
 

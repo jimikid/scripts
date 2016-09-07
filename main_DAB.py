@@ -13,9 +13,9 @@ from math import *
 import pandas as pd
 import matplotlib.pyplot as plt
 import pandas as pd
-import analysis.figure_functions as ff
+import data_aq_lib.analysis.figure_functions as ff
 
-import analysis.waveform_func as wf
+import data_aq_lib.analysis.waveform_func as wf
 
 
 current, B_oc, B_ic = [], [], []
@@ -264,13 +264,21 @@ def main():
 
 
     ''' Power with k=d '''
-    res=20
+
+    res=18
     Rad = [i * pi/2/res for i in range(0, res)];
+    deg = [i * 90.0/res for i in range(0, res)];
     k = [i *0.1 for i in range(6, 15, 2)];
     data_sets=[];
     xlimit=(0, pi / 2);
     ylimit=(0, 12000);
     limit, legend = [], []
+
+    df_dict=OrderedDict()
+    df_dict.update({'deg':deg})
+
+    #df=pd.DataFrame()
+
 
     for j in k:
         power = [];
@@ -281,16 +289,27 @@ def main():
         limit.append([xlimit, ylimit])
         legend.append('d=%.1f' %j)
         data_sets.append([Rad, power])
+        df_dict.update({'d=%.1f' %j:power})
+
 
     for i in Rad:
         l_low.append(bound_low(Vi=Vi,ps=i, Ls=Ls))
         l_high.append(bound_high(Vi=Vi,ps=i, Ls=Ls))
+
+
     limit.append([xlimit, ylimit])
     limit.append([xlimit, ylimit])
     legend.append('')
     legend.append('')
+
     data_sets.append([Rad, l_low])
     data_sets.append([Rad, l_high])
+
+    df_dict.update({'l_low':l_low})
+    df_dict.update({'l_high':l_high})
+
+    df=pd.DataFrame(df_dict)
+    df.to_csv('data_dab.csv')
     ff.plot(data_sets,  title='Po', combine=True, limit=limit,legend=legend)
 
 
@@ -309,7 +328,7 @@ def main():
             Bi_pk.append(Bic_pk(Vi=Vi, Ls=Ls, F=Fi, d=j, ps=i))
         limit.append([xlimit, ylimit])
         legend.append('d=%.1f' %j)
-        data_sets.append([Rad, Bi_pk])
+        data_sets.append([deg, Bi_pk])
     ff.plot(data_sets,  title='Bic_pk', combine=True, limit=limit,legend=legend)
 
     data_sets = [];
@@ -321,13 +340,19 @@ def main():
         limit.append([xlimit, ylimit])
         legend.append('d=%.1f' %j)
         data_sets.append([Rad, Bo_pk])
+
+    #df.set_index(deg)
     ff.plot(data_sets,  title='Boc_pk', combine=True, limit=limit,legend=legend)
+    return df
+
+
+
 
     ''' read file'''
     read(filepath='', filename='data_%s' % (spec))
 
 if __name__ == '__main__':
-    main()
+    df=main()
 
 
 

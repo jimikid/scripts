@@ -92,8 +92,8 @@ def Bi2(Vi, t, F, Ls, d, ps):
     return y
 
 def Irms(Vi, Ls, d, ps):
-    a=sqrt(Vi**2*((-1+d)**2*pi**3+12*d*pi*ps**2-8*d*ps**3))
-    b=Ls**2*w**2*2*sqrt(3*pi)
+    a=Vi*sqrt((d-1)**2*pi**3+12.0*d*pi*ps**2-8*d*ps**3)
+    b=2*w*Ls*sqrt(3*pi)
     y=a/b
     return y
 
@@ -180,7 +180,7 @@ d=1.0;
 Vi = 3000.0;
 Vop = Vi * d;
 
-deg = [i for i in range (2,62,2)]
+deg = [i for i in range (5,65,5)]
 Vo = [200]
 
 
@@ -192,36 +192,40 @@ for j in Vo:
     Vi=j*15.0/d
     Vop=Vi*d
     Rac=0;
-    power, loss_ic, loss_oc, loss_c,irms  = [], [], [], [], [];
+    power, loss_ic, loss_oc, loss_c,loss,irms  = [], [], [], [], [], [];
     for i in deg:
         ps = i / 360.0 * 2 * pi;
         Bi_pk = Bic_pk(Vi=Vi, Ls=Ls, F=Fi, d=d, ps=ps)
         Bo_pk = Boc_pk(Vop)
         Po = P(d=d, Vi=Vi, ps=ps, Ls=Ls, fs=fs)
-        current=Irms(Vi=Vi, Ls=Ls, d=d, ps=ps)
+        iLV=ni*Irms(Vi=Vi, Ls=Ls, d=d, ps=ps)
         P_loss_oc = Loss_oc(k_oc=k_oc, beta_oc=beta_oc, B=Bo_pk, V_oc=V_oc)
         P_loss_ic = Loss_ic(k_ic=k_ic, Bi=Bi_pk, alpha_ic=alpha_ic, beta_ic=beta_ic, V_ic=V_ic, fs=fs, ps=ps)
         P_loss_c = P_loss_ic + P_loss_oc
-        P_loss_w=Rac*current**2;
-        loss=P_loss_c+P_loss_w;
-        Eff=(Po-loss)/Po*100.0;
+        P_loss_w=Rac*iLV**2;
+        P_loss=P_loss_c+P_loss_w;
+        Eff=(Po-P_loss)/Po*100.0;
 
         eff.append(Eff);
         power.append(Po);
         loss_c.append(P_loss_c);
-        loss_ic.append(P_loss_oc);
-        loss_oc.append(P_loss_ic);
+        loss_ic.append(P_loss_ic);
+        loss_oc.append(P_loss_oc);
         loss_w.append(P_loss_w);
-        irms.append(current);
+        irms.append(iLV);
+        loss.append(P_loss);
         limit.append([xlimit, ylimit]);
 
-        print '\n Po : %.2f [kW], Irms=%.1f at d=% .1f, Vi=% .1f, Vo=% .1f, deg :%.1f ' % (Po/1000, current, d, Vi, j, i)
+        print '\n Po : %.2f [kW], Irms_LV=%.1f at d=% .1f, Vi=% .1f, Vo=% .1f, deg :%.1f ' % (Po/1000, iLV, d, Vi, j, i)
         print '\n Bi_pk : %.2f, Bo_pk : %.2f [T]' % (Bi_pk, Bo_pk)
         print '\n P_loss_oc: %.1f, P_loss_ic: %.1f,  loss_c :: %.1f' % (P_loss_oc, P_loss_ic, P_loss_c)
     #legend.append('al Vo=%.1f' % (Vi/15.0*d))
     legend.append('')
 
-df=pd.DataFrame({'deg':deg,'loss_c':loss_c, 'loss_w':loss_w, 'loss_ic':loss_ic, 'loss_oc':loss_oc, 'power':power, 'eff':eff, 'irms':irms})
+df=pd.DataFrame({'deg':deg,
+                 'loss':loss, 'loss_w':loss_w,
+                 'loss_c':loss_c, 'loss_oc':loss_oc, 'loss_ic':loss_ic,
+                 'power': power, 'eff': eff, 'irms_LV':irms})
 df.to_csv('data.csv')
 
 ff.plot([
@@ -235,7 +239,8 @@ ff.plot([
     [df['deg'], df['loss_c']/df['power']],
     [df['deg'], df['loss_ic']/df['power']],
     [df['deg'], df['loss_oc']/df['power']],
-    [df['deg'], df['loss_w']/df['power']]
+    [df['deg'], df['loss_w']/df['power']],
+    [df['deg'], df['power']/ 10000.0]
     ], title='loss_ratio', combine=True,  legend=legend, figsize=(8, 5))
 
 
