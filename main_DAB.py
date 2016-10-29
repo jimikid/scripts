@@ -13,10 +13,8 @@ from math import *
 import pandas as pd
 import matplotlib.pyplot as plt
 import pandas as pd
-import data_aq_lib.analysis.figure_functions as ff
-
-import data_aq_lib.analysis.waveform_func as wf
-
+import analysis.figure_functions as ff
+import analysis.waveform_func as wf
 
 current, B_oc, B_ic = [], [], []
 step = 1E-7
@@ -91,6 +89,12 @@ def Boc(Vop, t, t_ps):
     y=Vop/ni*(t-t_ps-T/4)/Ac_oc/no
     return y
 
+def Irms(Vi, Ls, d, ps):
+    a=Vi*sqrt((d-1)**2*pi**3+12.0*d*pi*ps**2-8*d*ps**3)
+    b=2*w*Ls*sqrt(3*pi)
+    y=a/b
+    return y
+
 def Bic_pk(Vi, Ls, F, d, ps):
     if d>1:
         #y = (Vi / 2 * mue * ni * ((-1 + d) * pi + 2 * ps)) / (4 * w * Ls * pi * ri_ic)
@@ -107,7 +111,8 @@ def Boc_pk(Vop):
     return y
 
 def L(mue, n, ri, ro, l):
-    y=n**2*mue/2/pi*log(ro/ri)*l
+    #y=n**2*mue/2/pi*log(ro/ri)*l*65.35/68.32
+    y = n ** 2 * mue / 2 / pi * log(ro / ri) * l
     return y
 
 def P(d, Vi, ps, Ls, fs):
@@ -150,8 +155,8 @@ def read(filepath, filename):
 
 
 def main():
-    d = 1.4;
-    deg = 30.0;
+    d = 1.0;
+    deg = 60.0;
     time_shift = T / 4.0;
     ps = deg / 360.0 * 2.0 * pi;
     shift = int(time_shift / step);
@@ -230,8 +235,8 @@ def main():
 
     ''' rms '''
     a = [(i) ** 2 for i in current]
-    Irms=sqrt(sum(a) / len(a))
-    print '\n Irms : %.1f [Arms]' % (Irms)
+    cur=sqrt(sum(a) / len(a))
+    print '\n Irms : %.1f [Arms]' % (cur)
 
     ''' two cycle'''
     cycle=2
@@ -281,15 +286,17 @@ def main():
 
 
     for j in k:
-        power = [];
+        power, cur = [],[];
         l_low, l_high=[],[];
 
         for i in Rad:
             power.append(P(d=j, Vi=Vi, ps=i, Ls=Ls, fs=fs))
+            cur.append(2**0.5*Irms(Vi=Vi, Ls=Ls, d=j, ps=i)) #Irms*2^0.5
+
         limit.append([xlimit, ylimit])
         legend.append('d=%.1f' %j)
         data_sets.append([Rad, power])
-        df_dict.update({'d=%.1f' %j:power})
+        df_dict.update({'dp=%.1f' %j:power, 'di=%.1f' %j:cur})
 
 
     for i in Rad:
@@ -314,9 +321,9 @@ def main():
 
 
     ''' B_pk with k=d '''
-    res=20
+
     Rad = [i * pi/2/res for i in range(0, res)];
-    k = [i *0.1 for i in range(6, 15, 2)];
+    k = [i *0.1 for i in range(4, 21, 2)];
     data_sets=[];
     xlimit=(0, pi / 2);
     ylimit=(0, 1.5);
@@ -327,9 +334,12 @@ def main():
         for i in Rad:
             Bi_pk.append(Bic_pk(Vi=Vi, Ls=Ls, F=Fi, d=j, ps=i))
         limit.append([xlimit, ylimit])
+        print Bi_pk
         legend.append('d=%.1f' %j)
+        df_dict.update({'dBic=%.1f' % j: Bi_pk})
         data_sets.append([deg, Bi_pk])
-    ff.plot(data_sets,  title='Bic_pk', combine=True, limit=limit,legend=legend)
+    print data_sets
+    ff.plot(data_sets,  title='Bic_pk', combine=True,legend=legend)
 
     data_sets = [];
     for j in k:
@@ -338,11 +348,16 @@ def main():
             Vop=Vi*j
             Bo_pk.append(Boc_pk(Vop=Vop))
         limit.append([xlimit, ylimit])
+        df_dict.update({'dBoc=%.1f' % j: Bo_pk})
         legend.append('d=%.1f' %j)
         data_sets.append([Rad, Bo_pk])
 
     #df.set_index(deg)
     ff.plot(data_sets,  title='Boc_pk', combine=True, limit=limit,legend=legend)
+    df = pd.DataFrame(df_dict)
+    df.to_csv('data_dab2.csv')
+
+
     return df
 
 

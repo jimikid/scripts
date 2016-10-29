@@ -13,9 +13,8 @@ from math import *
 import pandas as pd
 import matplotlib.pyplot as plt
 import pandas as pd
-import data_aq_lib.analysis.figure_functions as ff
-
-import data_aq_lib.analysis.waveform_func as wf
+import analysis.figure_functions as ff
+import analysis.waveform_func as wf
 
 
 current, B_oc, B_ic = [], [], []
@@ -92,11 +91,10 @@ def Bi2(Vi, t, F, Ls, d, ps):
     return y
 
 def Irms(Vi, Ls, d, ps):
-    a=sqrt(Vi**2*((-1+d)**2*pi**3+12*d*pi*ps**2-8*d*ps**3))
-    b=Ls**2*w**2*2*sqrt(3*pi)
+    a=Vi*sqrt((d-1)**2*pi**3+12.0*d*pi*ps**2-8*d*ps**3)
+    b=2*w*Ls*sqrt(3*pi)
     y=a/b
     return y
-
 
 def Boc(Vop, t, t_ps):
     y=Vop/ni*(t-t_ps-T/4)/Ac_oc/no
@@ -230,6 +228,9 @@ dict_sets_po = OrderedDict()
 dict_sets_i = OrderedDict()
 x = []
 y = []
+
+0.0008
+
 for name in names:
     deg, loss = [], []
     file = '%sdeg.csv' % name
