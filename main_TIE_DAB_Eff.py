@@ -1,4 +1,9 @@
 
+"""
+Created on 08/28/2016, @author: sbaek
+    - initial release
+"""
+
 import sys, time, os
 from os.path import abspath, dirname
 sys.path.append(dirname(dirname(__file__)))
@@ -83,6 +88,7 @@ Vi = 3000.0;
 Vop = Vi * d;
 
 deg = [i for i in range (5,65,5)]
+deg = [i for i in range (3,63,3)]
 Vo = [200]
 
 cwt1 = cwt.CWT(fs, ni, no, ri_oc, ro_oc, h_oc, n_oc, mue_ic, ri_ic, ro_ic, h_ic, n_ic)

@@ -234,7 +234,7 @@ ff.plot([
     [df['deg'], df['loss_ic']],
     [df['deg'], df['loss_oc']],
     [df['deg'], df['loss_w']]
-    ], title='loss', combine=True,  legend=legend, figsize=(8, 5))
+    ], filename='loss', title='loss', combine=True,  legend=legend, figsize=(8, 5))
 
 ff.plot([
     [df['deg'], df['loss_c']/df['power']],
@@ -242,12 +242,12 @@ ff.plot([
     [df['deg'], df['loss_oc']/df['power']],
     [df['deg'], df['loss_w']/df['power']],
     [df['deg'], df['power']/ 10000.0]
-    ], title='loss_ratio', combine=True,  legend=legend, figsize=(8, 5))
+    ], filename='loss_ratio', title='loss_ratio', combine=True,  legend=legend, figsize=(8, 5))
 
 
 ff.plot([
     [df['deg'], df['power']]
-    ]  , title='Po1', combine=True,  legend=legend, figsize=(8, 5))
+    ] , filename='Po1', title='Po1', combine=True,  legend=legend, figsize=(8, 5))
 ff.plot([[df['deg'], df['eff']]], title='Eff', combine=True,  legend=legend, figsize=(8, 5))
 
 
